@@ -81,6 +81,7 @@ function PomodoroScreen() {
                     elapsedTime: pomodoroState.elapsedTime
                 }));
 
+                dispatch(resetJustTimer());
                 dispatch(incrementCycleCount());
                 dispatch(setPomodoroDuration(pomodoroDuration));
                 dispatch(setElapsedTime(0));
@@ -186,12 +187,14 @@ function PomodoroScreen() {
     };
 
     const handleEndSession = async () => {
+        dispatch(setRunning(false));
         const result = await showModal();
         if (result) {
             await confirmEndSession();
         } else {
+            dispatch(setRunning(true));
         }
-        await setModalVisible(false);
+
     };
 
     // 모달을 띄우는 메서드
@@ -280,7 +283,7 @@ function PomodoroScreen() {
                             onChangeText={setSessionDescription}
                         />
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity onPress={() => handleCancel} style={styles.modalButton}>
+                            <TouchableOpacity onPress={handleCancel} style={styles.modalButton}>
                                 <Text>취소</Text>
                             </TouchableOpacity>
                             <TouchableOpacity onPress={handleConfirm} style={styles.modalButton}>
