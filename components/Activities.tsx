@@ -25,7 +25,7 @@ export function Activities() {
         const currentStartTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 
         if (activityState.isTracking) {
-            dispatch(stopTracking());
+            await dispatch(stopTracking());
         }
         setLocalElapsedTime(0)
         dispatch(startTracking({

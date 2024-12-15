@@ -54,8 +54,10 @@ function PomodoroScreen() {
     const {pomodoroDuration, remainingTime, isRunning, colorIndex, cycleCount, currentSegmentDescription, currentSegmentStart} = pomodoroState;
     const {activities, trackingActivity, isTracking, elapsedTime} = activityState;
 
+    const [sessionDescription, setSessionDescription] = useState("");
     const [modalVisible, setModalVisible] = useState(false);
     const [customMinutes, setCustomMinutes] = useState('');
+    const [resolvePromise, setResolvePromise] = useState<(value: boolean) => void>(() => () => {});
 
     useEffect(() => {
         let interval: NodeJS.Timeout | null = null;
@@ -70,11 +72,7 @@ function PomodoroScreen() {
 
             // 한 바퀴 종료 시점 처리
             if (isRunning && remainingTime === 0) {
-                Alert.alert("한 바퀴 종료", "포모도로 사이클이 끝났습니다. 집중 세션을 기록합니다.");
-
                 const segmentEnd = new Date();
-                const segmentStart = new Date(currentSegmentStart);
-                const segElapsed = (segmentEnd.getTime() - segmentStart.getTime()) / 1000;
 
                 dispatch(addFocusSegment({
                     description: currentSegmentDescription,
@@ -132,25 +130,6 @@ function PomodoroScreen() {
         setModalVisible(false);
     };
 
-    const handleEndSession = () => {
-        Alert.alert(
-            "종료",
-            "정말 활동을 종료하시겠습니까?",
-            [
-                {text: "취소", style: "cancel"},
-                {
-                    text: "종료",
-                    style: "destructive",
-                    onPress: () => {
-                        // dispatch(resetAll());
-                        dispatch(stopTracking());
-                        navigation.goBack();
-                    }
-                }
-            ]
-        );
-    };
-
     const elapsed = pomodoroDuration - remainingTime;
     const progress = pomodoroDuration ? elapsed / pomodoroDuration : 0;
     const angle = progress * 360;
@@ -192,6 +171,53 @@ function PomodoroScreen() {
         </View>
     );
 
+    const confirmEndSession = () => {
+        dispatch(addFocusSegment({
+            description: sessionDescription,
+            startDate: currentSegmentStart,
+            endDate: new Date().toISOString(),
+            elapsedTime: pomodoroState.elapsedTime
+        }));
+
+        setModalVisible(false);
+        dispatch(resetAll());
+        dispatch(stopTracking());
+        navigation.goBack();
+    };
+
+    const handleEndSession = async () => {
+        const result = await showModal();
+        if (result) {
+            await confirmEndSession();
+        } else {
+        }
+        await setModalVisible(false);
+    };
+
+    // 모달을 띄우는 메서드
+    const showModal = (): Promise<boolean> => {
+        setModalVisible(true);
+        return new Promise<boolean>((resolve) => {
+            setResolvePromise(() => resolve);
+        });
+    };
+
+    // 확인 버튼 클릭 핸들러
+    const handleConfirm = () => {
+        setModalVisible(false);
+        resolvePromise(true); // Promise에 true 전달
+    };
+
+    // 취소 버튼 클릭 핸들러
+    const handleCancel = () => {
+        setModalVisible(false);
+        resolvePromise(false); // Promise에 false 전달
+    };
+
+    const handleDescriptionChange = (text: string) => {
+        dispatch(setCurrentSegmentDescription(text));
+    };
+
     return (
         <View style={styles.screenContainer}>
             {/* 원형 타이머 영역 */}
@@ -212,6 +238,14 @@ function PomodoroScreen() {
                 <Text style={styles.cycleCountText}>총 {cycleCount} 바퀴</Text>
             </View>
 
+            {/* Focus Description Input */}
+            <TextInput
+                // style={}
+                placeholder="집중 내용을 입력하세요"
+                value={currentSegmentDescription}
+                onChangeText={handleDescriptionChange}
+            />
+
             <View style={styles.adjustContainer}>
                 <TouchableOpacity onPress={addTenMinutes} style={styles.adjustButton}>
                     <Text style={styles.adjustButtonText}>+10분</Text>
@@ -230,6 +264,33 @@ function PomodoroScreen() {
                 </TouchableOpacity>
             </View>
 
+            <Modal
+                visible={modalVisible}
+                transparent={true}
+                animationType="slide"
+                onRequestClose={() => setModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <Text style={styles.modalTitle}>활동 종료</Text>
+                        <TextInput
+                            style={styles.modalInput}
+                            placeholder="활동 내용을 입력하세요"
+                            value={sessionDescription}
+                            onChangeText={setSessionDescription}
+                        />
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity onPress={() => handleCancel} style={styles.modalButton}>
+                                <Text>취소</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={handleConfirm} style={styles.modalButton}>
+                                <Text>확인</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
+
             {focusSegments && (
                 <View style={styles.sessionListContainer}>
                     <Text style={styles.sessionListTitle}>집중한 세션</Text>
@@ -241,35 +302,6 @@ function PomodoroScreen() {
                     />
                 </View>
             )}
-
-            <Modal
-                visible={modalVisible}
-                transparent={true}
-                animationType="slide"
-                onRequestClose={() => setModalVisible(false)}
-            >
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalContainer}>
-                        <Text style={styles.modalTitle}>시간(분) 입력</Text>
-                        <TextInput
-                            style={styles.modalInput}
-                            keyboardType="numeric"
-                            placeholder="분을 입력하세요"
-                            value={customMinutes}
-                            onChangeText={setCustomMinutes}
-                        />
-                        <View style={styles.modalButtons}>
-                            <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.modalButton}>
-                                <Text>취소</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={confirmCustomTime} style={styles.modalButton}>
-                                <Text>확인</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
-
         </View>
     );
 }

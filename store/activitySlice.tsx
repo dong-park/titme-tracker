@@ -94,27 +94,37 @@ const activitySlice = createSlice({
 
         stopTracking: (state) => {
             if (state.trackingActivity) {
-                const finalEndTime = new Date();
+                const finalEndTime = new Date(); // 현재 시각
                 const cTrackingActivity = state.trackingActivity;
 
-                const finalElapsed = cTrackingActivity.elapsedTime;
-                console.log(cTrackingActivity);
+                // 시작 시간이 undefined인 경우 처리
+                if (!cTrackingActivity.startDate) {
+                    throw new Error("Tracking activity startDate is undefined");
+                }
 
+                // 시작 시간과 종료 시간의 차이를 초 단위로 계산
+                const startTime = new Date(cTrackingActivity.startDate).getTime();
+                const endTime = finalEndTime.getTime();
+                const finalElapsed = Math.floor((endTime - startTime) / 1000); // 초 단위 경과 시간
+
+                // 최종 Activity 데이터 생성
                 const payload: Activity = {
-                    index: state.activities.length,
-                    time: `${cTrackingActivity.startTime} - ${formatTime(finalEndTime)}`,
-                    tag: cTrackingActivity.description || "",
-                    emoji: cTrackingActivity.emoji || "",
-                    description: cTrackingActivity.description || "",
-                    elapsedTime: finalElapsed, // 여기서 finalElapsed(= trackingActivity.elapsedTime) 사용
-                    startDate: cTrackingActivity.startDate || new Date().toISOString(),
-                    endDate: finalEndTime.toISOString(),
-                    focusSegments: cTrackingActivity.focusSegments
+                    index: state.activities.length, // 활동 리스트의 현재 인덱스
+                    time: `${cTrackingActivity.startTime} - ${formatTime(finalEndTime)}`, // 시작 및 종료 시간
+                    tag: cTrackingActivity.description || "", // 태그 또는 활동 설명
+                    emoji: cTrackingActivity.emoji || "", // 활동을 나타내는 이모지
+                    description: cTrackingActivity.description || "", // 상세 설명
+                    elapsedTime: finalElapsed, // 계산된 경과 시간
+                    startDate: cTrackingActivity.startDate, // 시작 날짜
+                    endDate: finalEndTime.toISOString(), // 종료 날짜
+                    focusSegments: cTrackingActivity.focusSegments, // 기록된 집중 구간들
                 };
 
+                // 활동 리스트에 추가
                 state.activities.unshift(payload);
             }
 
+            // 상태 초기화
             state.isTracking = false;
             state.trackingActivity = null;
             state.elapsedTime = 0;

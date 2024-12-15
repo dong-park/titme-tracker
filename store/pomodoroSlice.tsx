@@ -40,7 +40,7 @@ const pomodoroSlice = createSlice({
         setPomodoroDuration: (state, action: PayloadAction<number>) => {
             const newDuration = Math.max(60, action.payload);
             state.pomodoroDuration = newDuration;
-            state.remainingTime = newDuration;
+            state.remainingTime = state.pomodoroDuration - state.elapsedTime;
         },
         incrementColorIndex: (state) => {
             state.colorIndex = (state.colorIndex + 1) % 7;

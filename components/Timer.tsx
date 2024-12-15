@@ -40,7 +40,6 @@ export function Timer() {
             useNativeDriver: true
         }).start(() => {
             if (activityState.trackingActivity) {
-                dispatch(setElapsedTime(localElapsedTimeRef.current));
                 dispatch(stopTracking());
                 Vibration.vibrate(500);
                 localElapsedTimeRef.current = 0;
