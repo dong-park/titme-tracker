@@ -6,6 +6,7 @@ import {RootState, store} from '@/store/store'
 import {Activities} from "@/components/Activities";
 import {RecentHistory} from "@/components/RecentActivities";
 import {ElapsedTimeProvider} from "@/components/ElapsedTimeContext";
+import WeekView from "@/components/WeekView";
 
 export default function App() {
     return (
@@ -24,7 +25,8 @@ function Root() {
             <ElapsedTimeProvider>
                 {activityState.isTracking && <Timer/>}
                 <Activities/>
-                <RecentHistory/>
+                <WeekView/>
+                {/*<RecentHistory/>*/}
             </ElapsedTimeProvider>
         </SafeAreaView>
     )
