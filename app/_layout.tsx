@@ -32,7 +32,13 @@ export default function RootLayout() {
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="activity/edit" options={{ headerShown: false }} />
         <Stack.Screen name="activity/input" options={{ headerShown: false }} />
-        <Stack.Screen name="pomodoro" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="pomodoro"
+          options={{
+            headerShown: false,
+            presentation: 'modal'  // 모달로 표시
+          }}
+        />
         <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>

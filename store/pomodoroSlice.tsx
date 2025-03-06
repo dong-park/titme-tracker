@@ -11,15 +11,17 @@ interface PomodoroState {
     currentSegmentDescription: string;
     currentSegmentStart: string;
     elapsedTime: number;
+    maxDuration: number; // 최대 시간 (3600초 = 1시간)
 }
 
 const initialState: PomodoroState = {
     pomodoroDuration: 1800,
     remainingTime: 1800,
+    maxDuration: 3600, // 1시간을 초 단위로
     isRunning: false,
     colorIndex: 0,
     cycleCount: 0,
-    currentSegmentDescription: "기본 집중 내용",
+    currentSegmentDescription: "",
     currentSegmentStart: new Date().toISOString(),
     elapsedTime: 0,
 };
@@ -38,9 +40,9 @@ const pomodoroSlice = createSlice({
             state.remainingTime = Math.max(0, action.payload);
         },
         setPomodoroDuration: (state, action: PayloadAction<number>) => {
-            const newDuration = Math.max(60, action.payload);
+            const newDuration = Math.max(60, Math.min(action.payload, state.maxDuration));
             state.pomodoroDuration = newDuration;
-            state.remainingTime = state.pomodoroDuration - state.elapsedTime;
+            state.remainingTime = newDuration;
         },
         incrementColorIndex: (state) => {
             state.colorIndex = (state.colorIndex + 1) % 7;

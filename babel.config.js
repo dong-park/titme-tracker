@@ -4,6 +4,7 @@ module.exports = function (api) {
     presets: ['babel-preset-expo'],
     plugins: [
       'react-native-reanimated/plugin', // 이 플러그인을 꼭 추가
+      'nativewind/babel',
     ],
   };
 };

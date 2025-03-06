@@ -1,37 +1,131 @@
 import {GestureHandlerRootView} from "react-native-gesture-handler";
-import Swipeable, { SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
+import { Swipeable, SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable';
 import {useDispatch, useSelector} from "react-redux";
 import {RootState} from "@/store/store";
 import {Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View} from "react-native";
 import React, {useEffect, useRef, useState} from "react";
 import {Activity, changeDescription, deleteActivity} from "@/store/activitySlice";
 import ModalComponent from "@/components/ModalComponent";
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-// RecentHistory 컴포넌트: 최근 활동 내역을 렌더링
+interface GroupedActivity {
+    emoji: string;
+    tag: string;
+    count: number;
+    totalTime: number;
+    focusSessionCount: number;
+}
+
 export function RecentHistory() {
     const activityState = useSelector((state: RootState) => state.activity);
-    const [localActivities, setLocalActivities] = useState(activityState.activities);
+    const [groupedActivities, setGroupedActivities] = useState<GroupedActivity[]>([]);
 
     useEffect(() => {
-        // activityState가 업데이트될 때 한 번만 로컬 상태에 활동 기록 저장
-        setLocalActivities(activityState.activities);
-    }, [activityState]);
+        const today = new Date().setHours(0, 0, 0, 0);
+        const todayActivities = activityState.activities.filter(activity => {
+            const activityDate = new Date(activity.startDate).setHours(0, 0, 0, 0);
+            return activityDate === today;
+        });
+
+        const grouped = todayActivities.reduce((acc: { [key: string]: GroupedActivity }, curr) => {
+            const key = `${curr.tag}-${curr.emoji}`;
+
+            if (!acc[key]) {
+                acc[key] = {
+                    emoji: curr.emoji,
+                    tag: curr.tag,
+                    count: 0,
+                    totalTime: 0,
+                    focusSessionCount: 0
+                };
+            }
+
+            acc[key].count += 1;
+            acc[key].totalTime += curr.elapsedTime;
+            acc[key].focusSessionCount += curr.focusSegments.length;
+
+            return acc;
+        }, {});
+
+        setGroupedActivities(Object.values(grouped));
+    }, [activityState.activities]);
 
     return (
         <GestureHandlerRootView style={styles.safeArea}>
             <View style={styles.titleArea}>
-                <Text style={styles.recentTitle}>Recent Tracking</Text>
+                <Text style={styles.recentTitle}>Today's Activities</Text>
             </View>
             <ScrollView
                 style={styles.scrollView}
                 contentContainerStyle={styles.scrollContentContainer}
                 showsVerticalScrollIndicator={false}
             >
-                {localActivities.map((activity) => (
-                    <ActivityItem {...activity} key={activity.index}/>
+                {groupedActivities.map((activity, index) => (
+                    <ActivitySummaryItem key={index} {...activity} />
                 ))}
             </ScrollView>
         </GestureHandlerRootView>
+    );
+}
+
+function ActivitySummaryItem({ emoji, tag, count, totalTime, focusSessionCount }: GroupedActivity) {
+    const hasStats = count > 0 || totalTime > 0 || focusSessionCount > 0;
+
+    return (
+        <View style={styles.activityItem}>
+            <View style={styles.activityHeader}>
+                <Text style={styles.activityEmoji}>{emoji}</Text>
+                <Text style={styles.activityTag}>{tag}</Text>
+            </View>
+
+            {hasStats ? (
+                <View style={styles.statsContainer}>
+                    {count > 0 && (
+                        <View style={styles.statItem}>
+                            <View style={styles.statIconContainer}>
+                                <Icon name="clock-time-four" size={24} color="#4A90E2" />
+                                <Text style={styles.statValue}>{count}</Text>
+                            </View>
+                            <Text style={styles.statLabel}>Sessions</Text>
+                        </View>
+                    )}
+
+                    {totalTime > 0 && (
+                        <View style={styles.statItem}>
+                            <View style={styles.statIconContainer}>
+                                <Icon name="timer-sand" size={24} color="#50C878" />
+                                <Text style={styles.statValue}>{formatElapsedTime(totalTime)}</Text>
+                            </View>
+                            <Text style={styles.statLabel}>Total Time</Text>
+                        </View>
+                    )}
+
+                    {focusSessionCount > 0 && (
+                        <View style={styles.statItem}>
+                            <View style={styles.focusSessionContainer}>
+                                {[...Array(Math.min(focusSessionCount, 5))].map((_, i) => (
+                                    <Icon
+                                        key={i}
+                                        name="circle-slice-8"
+                                        size={20}
+                                        color="#FF6B6B"
+                                        style={styles.tomatoIcon}
+                                    />
+                                ))}
+                                {focusSessionCount > 5 && (
+                                    <Text style={styles.extraSessions}>+{focusSessionCount - 5}</Text>
+                                )}
+                            </View>
+                            <Text style={styles.statLabel}>Focus Sessions</Text>
+                        </View>
+                    )}
+                </View>
+            ) : (
+                <View style={styles.noStatsContainer}>
+                    <Text style={styles.noStatsText}>아직 기록된 활동이 없습니다</Text>
+                </View>
+            )}
+        </View>
     );
 }
 
@@ -45,7 +139,6 @@ function ActivityItem({ index, time, tag, emoji, description, elapsedTime, start
     const closeModal = () => setIsModalVisible(false);
 
     const handleSave = () => {
-        // 수정된 내용 저장
         dispatch(changeDescription({
             index: index,
             newDescription: editDescription,
@@ -90,21 +183,17 @@ function ActivityItem({ index, time, tag, emoji, description, elapsedTime, start
                 </View>
             </Swipeable>
 
-            {/* 공통 모달 컴포넌트 사용 */}
             <ModalComponent
                 visible={isModalVisible}
                 onClose={closeModal}
                 onSave={handleSave}
                 title="Edit Activity"
             >
-                {/* 수정 불가한 정보 */}
                 <Text style={styles.modalText}>Tag: {tag}</Text>
                 <Text style={styles.modalText}>Emoji: {emoji}</Text>
                 <Text style={styles.modalText}>Start Date: {startDate}</Text>
                 <Text style={styles.modalText}>End Date: {endDate}</Text>
                 <Text style={styles.modalText}>Elapsed Time: {formatElapsedTime(elapsedTime)}</Text>
-
-                {/* 수정 가능한 설명 필드 */}
                 <TextInput
                     style={styles.input}
                     value={editDescription}
@@ -117,8 +206,6 @@ function ActivityItem({ index, time, tag, emoji, description, elapsedTime, start
     );
 }
 
-
-// 상대 시간을 계산하는 함수
 function getRelativeTime(activityTime: string) {
     const now = new Date().getTime();
     const activityDate = new Date(activityTime).getTime();
@@ -130,7 +217,6 @@ function getRelativeTime(activityTime: string) {
     return `${Math.floor(diffInSeconds / 86400)}일 전`;
 }
 
-// 경과 시간을 포맷팅하는 함수
 const formatElapsedTime = (seconds: number): string => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
@@ -143,7 +229,6 @@ const formatElapsedTime = (seconds: number): string => {
     return `${hrsText}${minsText}${secsText}`;
 };
 
-// 스타일 정의
 const styles = StyleSheet.create({
     safeArea: {
         flex: 1,
@@ -167,16 +252,75 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
     },
     activityItem: {
+        backgroundColor: '#ffffff',
+        borderRadius: 12,
+        padding: 16,
+        marginHorizontal: 16,
+        marginVertical: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.1,
+        shadowRadius: 4,
+        elevation: 3,
+    },
+    activityHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 16,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        paddingBottom: 12,
+    },
+    activityEmoji: {
+        fontSize: 28,
+        marginRight: 12,
+    },
+    activityTag: {
+        fontSize: 18,
+        fontWeight: '600',
+        color: '#2c3e50',
+    },
+    statsContainer: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginVertical: 2,
+        flexWrap: 'nowrap',
+    },
+    statItem: {
+        alignItems: 'center',
+        flex: 1,
+        paddingHorizontal: 8,
+    },
+    statIconContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginBottom: 4,
+    },
+    statValue: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#2c3e50',
+        marginLeft: 4,
+    },
+    statLabel: {
+        fontSize: 12,
+        color: '#7f8c8d',
+        marginTop: 4,
+    },
+    focusSessionContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 4,
+    },
+    tomatoIcon: {
         marginHorizontal: 2,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
-        backgroundColor: '#ffffff',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
+    },
+    extraSessions: {
+        fontSize: 14,
+        color: '#FF6B6B',
+        fontWeight: '600',
+        marginLeft: 4,
     },
     activityRecentTime: {},
     activityRecentTimeFont: {
@@ -215,7 +359,7 @@ const styles = StyleSheet.create({
     modalContainer: {
         width: 300,
         padding: 20,
-        backgroundColor: '#f8f9fb',  // 밝은 배경색으로 설정
+        backgroundColor: '#f8f9fb',
         borderRadius: 10,
         alignItems: 'center',
         shadowColor: '#000',
@@ -227,14 +371,14 @@ const styles = StyleSheet.create({
     modalTitle: {
         fontSize: 18,
         fontWeight: '600',
-        color: '#3b506d',  // 일관된 톤의 텍스트 색상
+        color: '#3b506d',
         marginBottom: 20,
     },
     closeButton: {
         marginTop: 20,
         paddingVertical: 10,
         paddingHorizontal: 20,
-        backgroundColor: '#6b8ac9',  // 화면 톤에 맞춘 부드러운 파란색 계열
+        backgroundColor: '#6b8ac9',
         borderRadius: 5,
     },
     closeButtonText: {
@@ -245,13 +389,13 @@ const styles = StyleSheet.create({
     actionContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: '#f8f9fb',  // 동일한 배경 색상
+        backgroundColor: '#f8f9fb',
         paddingLeft: 5,
         paddingVertical: 2.5,
         marginVertical: 2,
     },
     editAction: {
-        backgroundColor: '#6b8ac9',  // 부드러운 파란색 계열
+        backgroundColor: '#6b8ac9',
         justifyContent: 'center',
         alignItems: 'center',
         width: 80,
@@ -280,7 +424,7 @@ const styles = StyleSheet.create({
         marginTop: 10,
         paddingVertical: 10,
         paddingHorizontal: 20,
-        backgroundColor: '#4CAF50',  // 초록색 저장 버튼
+        backgroundColor: '#4CAF50',
         borderRadius: 5,
         alignItems: 'center',
     },
@@ -293,5 +437,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         color: '#3b506d',
         marginBottom: 10,
+    },
+    noStatsContainer: {
+        padding: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+    },
+    noStatsText: {
+        color: '#94a3b8',
+        fontSize: 14,
     },
 });

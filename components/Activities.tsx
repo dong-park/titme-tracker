@@ -1,7 +1,7 @@
 import {useDispatch, useSelector} from "react-redux";
 import {RootState} from "@/store/store";
 import {MenuActivity, startTracking, stopTracking} from "@/store/activitySlice";
-import {PanResponder, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View} from "react-native";
+import {PanResponder, Platform, ScrollView, Text, TouchableOpacity, View} from "react-native";
 import React, {forwardRef, useImperativeHandle, useRef, useState} from "react";
 import Animated, {useAnimatedStyle, useSharedValue, withRepeat, withTiming} from 'react-native-reanimated';
 import {GestureHandlerRootView, LongPressGestureHandler, State} from 'react-native-gesture-handler';
@@ -98,16 +98,28 @@ export function Activities() {
         return Platform.OS === 'web' ? (
             // 웹 환경에서는 클릭 이벤트만 사용
             <TouchableOpacity
-                style={styles.activityButtonContainer}
+                className="w-[90px] h-[90px] max-w-[90px] max-h-[90px] m-[5px] rounded-[10px] overflow-hidden"
                 onPress={handlePress}
                 activeOpacity={0.7}
             >
-                <Animated.View style={[styles.animatedBackground, animatedStyle]}/>
-                <View style={[styles.activityButton]}>
-                    <Text style={styles.activityEmoji} numberOfLines={1}>
+                <Animated.View style={[
+                    {
+                        zIndex: 1,
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        right: 0,
+                        bottom: 0,
+                        height: 83,
+                        borderRadius: 10,
+                    },
+                    animatedStyle
+                ]}/>
+                <View className="z-[2] p-[15px] bg-white items-center rounded-[11px] border-b border-b-[#e5e7eb] shadow-md">
+                    <Text className="text-[28px] mb-[2px]" numberOfLines={1}>
                         {activity.emoji}
                     </Text>
-                    <Text style={styles.activityText} numberOfLines={1}>
+                    <Text className="text-base font-semibold" numberOfLines={1}>
                         {activity.name}
                     </Text>
                 </View>
@@ -118,8 +130,23 @@ export function Activities() {
                 minDurationMs={500}
             >
                 <View>
-                    <Animated.View style={[styles.activityButtonContainer, editAnimatedStyle]}>
-                        {!isEditMode && <Animated.View style={[styles.animatedBackground, animatedStyle]}/>}
+                    <Animated.View style={[
+                        { width: 90, height: 90, maxWidth: 90, maxHeight: 90, margin: 5, borderRadius: 10, overflow: 'hidden' },
+                        editAnimatedStyle
+                    ]}>
+                        {!isEditMode && <Animated.View style={[
+                            {
+                                zIndex: 1,
+                                position: 'absolute',
+                                left: 0,
+                                top: 0,
+                                right: 0,
+                                bottom: 0,
+                                height: 83,
+                                borderRadius: 10,
+                            },
+                            animatedStyle
+                        ]}/>}
                         <TouchableOpacity
                             onPress={() => {
                                 resetAnimation()
@@ -133,10 +160,10 @@ export function Activities() {
                                     )
                                 }
                             }}
-                            style={[styles.activityButton]}
+                            className="z-[2] p-[15px] bg-white items-center rounded-[11px] border-b border-b-[#e5e7eb] shadow-md"
                         >
-                            <Text style={styles.activityEmoji} numberOfLines={1}>{activity.emoji}</Text>
-                            <Text style={styles.activityText} numberOfLines={1}>{activity.name}</Text>
+                            <Text className="text-[28px] mb-[2px]" numberOfLines={1}>{activity.emoji}</Text>
+                            <Text className="text-base font-semibold" numberOfLines={1}>{activity.name}</Text>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
@@ -188,16 +215,15 @@ export function Activities() {
     ).current;
 
     return (
-        <GestureHandlerRootView style={styles.container}>
-            <View style={styles.titleArea}>
-                <Text style={styles.recentTitle}>Activities</Text>
+        <GestureHandlerRootView>
+            <View className="flex-row justify-between mx-4 my-1 items-center">
+                <Text className="text-lg font-bold">Activities</Text>
                 <View>
-
                     <TouchableOpacity
-                        style={styles.editToggleButton}
+                        className="px-3 py-1.5 bg-[#007BFF] rounded-lg"
                         onPress={() => setIsEditMode(!isEditMode)}
                     >
-                        <Text style={styles.editToggleButtonText}>{isEditMode ? "Done" : "Edit"}</Text>
+                        <Text className="text-white text-sm">{isEditMode ? "Done" : "Edit"}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -205,19 +231,19 @@ export function Activities() {
                 ref={scrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.activityButtonsContainer}
+                className={Platform.OS === 'web' ? "overflow-scroll" : ""}
+                contentContainerStyle={{ paddingHorizontal: 8, alignItems: 'center' }}
                 onScrollBeginDrag={handleScrollBegin}
                 scrollEventThrottle={16}
-                style={[Platform.OS === 'web' ? {overflow: 'scroll'} : {}]}  // 웹에서만 overflow 설정
                 {...(Platform.OS === 'web' ? panResponder.panHandlers : {})} // 웹 환경에서만 panHandlers 적용
             >
-                <View style={styles.twoRowContainer}>
-                    <View style={styles.singleRowContainer}>
+                <View className="flex-col">
+                    <View className="flex-row mb-[5px]">
                         {rowOneActivities.map((activity, index) => (
                             <RenderActivityCard key={index} ref={rowOneRefs[index]} activity={activity}/>
                         ))}
                     </View>
-                    <View style={styles.singleRowContainer}>
+                    <View className="flex-row mb-[5px]">
                         {rowTwoActivities.map((activity, index) => (
                             <RenderActivityCard key={index} ref={rowTwoRefs[index]} activity={activity}/>
                         ))}
@@ -227,94 +253,3 @@ export function Activities() {
         </GestureHandlerRootView>
     );
 }
-
-const styles = StyleSheet.create({
-    container: {},
-    activityButtonsContainer: {
-        paddingHorizontal: 8,
-        alignItems: 'center',
-    },
-    twoRowContainer: {
-        flexDirection: 'column',
-    },
-    singleRowContainer: {
-        flexDirection: 'row',
-        marginBottom: 5,
-    },
-    activityButtonContainer: {
-        width: 90,
-        height: 90,
-        maxWidth: 90,
-        maxHeight: 90,
-        margin: 5,
-        borderRadius: 10,
-        overflow: 'hidden',
-    },
-    animatedBackground: {
-        zIndex: 1,
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        right: 0,
-        bottom: 0,
-        height: 83,
-        borderRadius: 10,
-    },
-    activityButton: {
-        zIndex: 2,
-        padding: 15,
-        backgroundColor: '#ffffff',
-        alignItems: 'center',
-        borderRadius: 11,
-        borderBottomWidth: 1,
-        borderBottomColor: '#e5e7eb',
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.4,
-        shadowRadius: 6,
-        elevation: 5,
-    },
-    activityEmoji: {
-        fontSize: 28,
-        marginBottom: 2,
-    },
-    activityText: {
-        fontSize: 16,
-        fontWeight: "600",
-    },
-    titleArea: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginHorizontal: 16,
-        marginVertical: 4,
-        alignItems: 'center',
-    },
-    recentTitle: {
-        fontSize: 18,
-        fontWeight: 'bold',
-    },
-    editToggleButton: {
-        paddingHorizontal: 12,
-        paddingVertical: 6,
-        backgroundColor: '#007BFF',
-        borderRadius: 8,
-    },
-    editToggleButtonText: {
-        color: '#fff',
-        fontSize: 14,
-    },
-    editIcon: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        backgroundColor: '#d2d2d2',
-        width: 26,
-        height: 26,
-        borderRadius: 12,
-        alignItems: 'center',
-        justifyContent: 'center',
-    },
-    editIconText: {
-        fontSize: 12,
-    },
-});
