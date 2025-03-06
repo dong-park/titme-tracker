@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="WebServers">
+    <option name="servers">
+      <webServer id="0e6d5772-9559-4566-af11-4edcdd8b659c" name="dongpark-server">
+        <fileTransfer rootFolder="/home" accessType="SFTP" host="218.38.189.94" port="10022" sshConfigId="58fd04a5-a0eb-4451-b249-66d577637526" sshConfig="dongpark@218.38.189.94:10022 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+      <webServer id="8861c0ec-c306-4610-9e7c-d2fc4db3608b" name="dongpark-nginx">
+        <fileTransfer rootFolder="/etc/nginx" accessType="SFTP" host="218.38.189.94" port="10022" sshConfigId="58fd04a5-a0eb-4451-b249-66d577637526" sshConfig="dongpark@218.38.189.94:10022 password">
+          <advancedOptions>
+            <advancedOptions dataProtectionLevel="Private" keepAliveTimeout="0" passiveMode="true" shareSSLContext="true" />
+          </advancedOptions>
+        </fileTransfer>
+      </webServer>
+    </option>
+  </component>
+</project>
