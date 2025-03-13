@@ -1,6 +1,6 @@
 // Timer.tsx - 모듈화된 버전
 import {Animated, TouchableOpacity, Vibration, View} from "react-native";
-import React, {useEffect, useRef, useState} from "react";
+import React, {useEffect, useRef, useState, useMemo, useCallback} from "react";
 import {useDispatch, useSelector} from "react-redux";
 import {RootState} from "@/store/store";
 import {setElapsedTime as setActivityElapsedTime, stopTracking} from "@/store/activitySlice";
@@ -9,10 +9,29 @@ import {styled} from "nativewind";
 import {TimerDisplay} from "./timer/TimerDisplay";
 import {resetAll} from "@/store/pomodoroSlice";
 import {GestureHandlerRootView} from "react-native-gesture-handler";
+import { createSelector } from '@reduxjs/toolkit';
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledAnimatedView = styled(Animated.View);
+
+// 메모이제이션된 셀렉터 생성
+const selectCurrentActivityId = createSelector(
+    [
+        (state: RootState) => state.activity.menu,
+        (state: RootState) => state.activity.trackingActivity?.description,
+        (state: RootState) => state.activity.trackingActivity?.emoji
+    ],
+    (menu, description, emoji) => {
+        if (!description || !emoji) return undefined;
+        
+        const foundActivity = menu.find(
+            activity => activity.name === description && activity.emoji === emoji
+        );
+        
+        return foundActivity?.id;
+    }
+);
 
 export function Timer() {
     const activityState = useSelector((state: RootState) => state.activity);
@@ -31,22 +50,10 @@ export function Timer() {
     const [expandAnim] = useState(new Animated.Value(0));
     const {description, emoji, startTime} = activityState.trackingActivity || {};
     
-    // 현재 활동 ID 찾기
-    const [currentActivityId, setCurrentActivityId] = useState<number | undefined>(undefined);
-    
-    // 현재 활동 이름으로 메뉴에서 활동 ID 찾기
-    useEffect(() => {
-        if (description && emoji) {
-            const foundActivity = activityState.menu.find(
-                activity => activity.name === description && activity.emoji === emoji
-            );
-            setCurrentActivityId(foundActivity?.id);
-        } else {
-            setCurrentActivityId(undefined);
-        }
-    }, [description, emoji, activityState.menu]);
+    // 메모이제이션된 셀렉터 사용
+    const currentActivityId = useSelector(selectCurrentActivityId);
 
-    const handleStopTracking = () => {
+    const handleStopTracking = useCallback(() => {
         Animated.timing(slideAnim, {
             toValue: 500,
             duration: 750,
@@ -65,14 +72,15 @@ export function Timer() {
                 dispatch(resetAll());
             }
         });
-    };
+    }, [activityState.trackingActivity, dispatch, localElapsedTimeRef, slideAnim]);
 
-    const togglePomodoroTimer = () => {
+    const togglePomodoroTimer = useCallback(() => {
         // 이제 TimerDisplay 내부에서 처리됨
-    };
+        console.log("포모도로 타이머 토글");
+    }, []);
 
     // 마일스톤 메시지 생성 함수
-    const getMilestoneMessage = (seconds: number, lastMilestone: number) => {
+    const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
         // 처음 시작할 때
         if (seconds < 60) return "집중 시작!";
 
@@ -95,15 +103,15 @@ export function Timer() {
 
         // 마일스톤 사이의 메시지
         return milestone; // 기존 메시지 유지
-    };
+    }, [milestone]);
 
     // 시간 형식 함수
-    const formatElapsedTime = (seconds: number) => {
+    const formatElapsedTime = useCallback((seconds: number) => {
         const hrs = Math.floor(seconds / 3600);
         const mins = Math.floor((seconds % 3600) / 60);
         const secs = seconds % 60;
         return `${hrs > 0 ? `${hrs}시간 ` : ''} ${mins > 0 ? `${mins}분` : ''} ${secs}초`;
-    };
+    }, []);
 
     // 일반 타이머 흐르게하는 useEffect
     useEffect(() => {
@@ -138,13 +146,13 @@ export function Timer() {
                 clearInterval(timerInterval.current);
             }
         };
-    }, [isTracking, milestone, lastMilestoneTime]);
+    }, [isTracking, milestone, lastMilestoneTime, getMilestoneMessage, timerScale]);
 
     useEffect(() => {
         if (isTracking) {
             dispatch(setActivityElapsedTime(localElapsedTimeRef.current));
         }
-    }, [isTracking, dispatch]);
+    }, [isTracking, dispatch, localElapsedTimeRef]);
 
     useEffect(() => {
         if (isTracking) {
@@ -157,7 +165,7 @@ export function Timer() {
         } else {
             timerScale.setValue(1);
         }
-    }, [isTracking]);
+    }, [isTracking, timerScale]);
 
     useEffect(() => {
         Animated.timing(slideAnim, {
@@ -165,7 +173,7 @@ export function Timer() {
             duration: 750,
             useNativeDriver: true
         }).start();
-    }, []);
+    }, [slideAnim]);
 
     useEffect(() => {
         if (isExpanded) {
@@ -181,7 +189,7 @@ export function Timer() {
                 useNativeDriver: true
             }).start();
         }
-    }, [isExpanded]);
+    }, [isExpanded, expandAnim]);
 
     return (
         <GestureHandlerRootView style={{ zIndex: 10, flex: 1 }}>

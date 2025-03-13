@@ -1,31 +1,31 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '@/store/store';
 import { addTodo, toggleTodo, deleteTodo, TodoItem } from '@/store/todoSlice';
+import { createSelector } from '@reduxjs/toolkit';
 
 interface TodoListProps {
   activityId: number;
 }
 
+// 메모이제이션된 셀렉터 생성
+const selectTodosByActivityId = createSelector(
+  [(state: RootState) => state.todos?.todosByActivity, (state: RootState, activityId: number) => activityId],
+  (todosByActivity, activityId) => todosByActivity?.[activityId] || []
+);
+
 export function TodoList({ activityId }: TodoListProps) {
   const dispatch = useDispatch();
   
   // 메모이제이션된 셀렉터 사용
-  const todos = useSelector((state: RootState) => {
-    return state.todos?.todosByActivity?.[activityId] || [];
-  }, (prev, next) => {
-    // 이전 값과 다음 값이 같은 배열인지 비교
-    if (!prev || !next) return false;
-    if (prev.length !== next.length) return false;
-    return prev === next;
-  });
+  const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
   
   const [newTodo, setNewTodo] = useState('');
 
   // 새 Todo 추가
-  const handleAddTodo = () => {
+  const handleAddTodo = useCallback(() => {
     if (newTodo.trim() === '') return;
     
     dispatch(addTodo({
@@ -34,26 +34,26 @@ export function TodoList({ activityId }: TodoListProps) {
     }));
     
     setNewTodo('');
-  };
+  }, [dispatch, activityId, newTodo]);
 
   // Todo 완료 상태 토글
-  const handleToggleTodo = (todoId: string) => {
+  const handleToggleTodo = useCallback((todoId: string) => {
     dispatch(toggleTodo({
       activityId,
       todoId
     }));
-  };
+  }, [dispatch, activityId]);
 
   // Todo 삭제
-  const handleDeleteTodo = (todoId: string) => {
+  const handleDeleteTodo = useCallback((todoId: string) => {
     dispatch(deleteTodo({
       activityId,
       todoId
     }));
-  };
+  }, [dispatch, activityId]);
 
   // Todo 아이템 렌더링
-  const renderTodoItem = (item: TodoItem) => (
+  const renderTodoItem = useCallback((item: TodoItem) => (
     <View style={styles.todoItem} key={item.id}>
       <TouchableOpacity 
         style={styles.checkbox} 
@@ -82,7 +82,12 @@ export function TodoList({ activityId }: TodoListProps) {
         <Icon name="trash-outline" size={20} color="#FF5252" />
       </TouchableOpacity>
     </View>
-  );
+  ), [handleToggleTodo, handleDeleteTodo]);
+
+  // 투두 아이템 목록 메모이제이션
+  const todoItems = useMemo(() => {
+    return todos.map(item => renderTodoItem(item));
+  }, [todos, renderTodoItem]);
 
   return (
     <View style={styles.container}>
@@ -113,7 +118,7 @@ export function TodoList({ activityId }: TodoListProps) {
         </View>
       ) : (
         <ScrollView style={styles.list}>
-          {todos.map(item => renderTodoItem(item))}
+          {todoItems}
         </ScrollView>
       )}
     </View>

@@ -7,12 +7,22 @@ import { Ionicons } from '@expo/vector-icons';
 import { TodoList } from "@/components/TodoList";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import { createSelector } from '@reduxjs/toolkit';
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledAnimatedView = styled(Animated.View);
 const StyledAnimatedText = styled(Animated.Text);
+
+// 메모이제이션된 셀렉터 생성
+const selectActivityById = createSelector(
+  [(state: RootState) => state.activity.menu, (state: RootState, activityId: number | undefined) => activityId],
+  (menu, activityId) => {
+    if (!activityId) return null;
+    return menu.find(item => item.id === activityId) || null;
+  }
+);
 
 interface TimerDisplayProps {
     emoji?: string;
@@ -48,12 +58,10 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     const [showPomodoroTimer, setShowPomodoroTimer] = useState(false);
     const [showTodoList, setShowTodoList] = useState(false);
     
-    // 활동 정보 가져오기 - 메모이제이션 적용
-    const activity = useSelector((state: RootState) => {
-        if (!activityId) return null;
-        const foundActivity = state.activity.menu.find(item => item.id === activityId);
-        return foundActivity || null;
-    });
+    // 메모이제이션된 셀렉터 사용
+    const activity = useSelector(
+      (state: RootState) => selectActivityById(state, activityId)
+    );
     
     // 메모이제이션된 값 사용
     const hasTodoList = useMemo(() => !!activity?.todoListEnabled, [activity]);
@@ -62,7 +70,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     return (
         <StyledTouchableOpacity
             className="active:opacity-80"
-            onPress={() => {}}
+            onPress={togglePomodoroTimer}
         >
             <StyledAnimatedView
                 className="bg-white p-4 mx-4 rounded-lg my-2.5 shadow-sm"
