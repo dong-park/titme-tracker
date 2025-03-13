@@ -1,12 +1,18 @@
-// Timer.tsx
-import {Animated, StyleSheet, Text, TouchableOpacity, Vibration, View} from "react-native";
+// Timer.tsx - 모듈화된 버전
+import {Animated, TouchableOpacity, Vibration, View} from "react-native";
 import React, {useEffect, useRef, useState} from "react";
 import {useDispatch, useSelector} from "react-redux";
 import {RootState} from "@/store/store";
-import {setElapsedTime, stopTracking} from "@/store/activitySlice";
+import {setElapsedTime as setActivityElapsedTime, stopTracking} from "@/store/activitySlice";
 import {useElapsedTime} from "@/components/ElapsedTimeContext";
-import {useNavigation} from "@react-navigation/native";
-import {router} from "expo-router";
+import {styled} from "nativewind";
+import {TimerDisplay} from "./timer/TimerDisplay";
+import {resetAll} from "@/store/pomodoroSlice";
+import {GestureHandlerRootView} from "react-native-gesture-handler";
+
+const StyledView = styled(View);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledAnimatedView = styled(Animated.View);
 
 export function Timer() {
     const activityState = useSelector((state: RootState) => state.activity);
@@ -15,23 +21,30 @@ export function Timer() {
     const elapsedTime = useSelector((state: RootState) => state.activity.elapsedTime);
     const {localElapsedTimeRef, setLocalElapsedTime} = useElapsedTime();
 
-    // 일시정지 관련 상태 제거
-    // const [isPaused, setIsPaused] = useState(falsze);
-
     const [displayedElapsedTime, setDisplayedElapsedTime] = useState(elapsedTime);
+    const [milestone, setMilestone] = useState("집중 시작!");
+    const [lastMilestoneTime, setLastMilestoneTime] = useState(0);
     const timerInterval = useRef<number | NodeJS.Timeout | null>(null);
     const [timerScale] = useState(new Animated.Value(1));
     const [slideAnim] = useState(new Animated.Value(-500));
+    const [isExpanded, setIsExpanded] = useState(false);
+    const [expandAnim] = useState(new Animated.Value(0));
     const {description, emoji, startTime} = activityState.trackingActivity || {};
-
-    const navigation = useNavigation(); // 네비게이션 훅
-
-    const formatElapsedTime = (seconds: number) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hrs > 0 ? `${hrs}시간 ` : ''} ${mins > 0 ? `${mins}분` : ''} ${secs}초`;
-    };
+    
+    // 현재 활동 ID 찾기
+    const [currentActivityId, setCurrentActivityId] = useState<number | undefined>(undefined);
+    
+    // 현재 활동 이름으로 메뉴에서 활동 ID 찾기
+    useEffect(() => {
+        if (description && emoji) {
+            const foundActivity = activityState.menu.find(
+                activity => activity.name === description && activity.emoji === emoji
+            );
+            setCurrentActivityId(foundActivity?.id);
+        } else {
+            setCurrentActivityId(undefined);
+        }
+    }, [description, emoji, activityState.menu]);
 
     const handleStopTracking = () => {
         Animated.timing(slideAnim, {
@@ -44,30 +57,76 @@ export function Timer() {
                 Vibration.vibrate(500);
                 localElapsedTimeRef.current = 0;
                 setDisplayedElapsedTime(0);
+                setMilestone("집중 시작!");
+                setLastMilestoneTime(0);
                 slideAnim.setValue(0);
+
+                // 포모도로 타이머도 초기화
+                dispatch(resetAll());
             }
         });
     };
 
-    // 화면을 누르면 뽀모도로 타이머로 이동
-    const handleNavigatePomodoro = () => {
-        router.push({
-            pathname: '/pomodoro',
-            params: {
-                id: '1',
-                name: '독서',
-                elapsedTime: localElapsedTimeRef.current, // 참조값에 담긴 현재 시간 전달
-                pomodoroDuration: 30 // 30분, 원하는 시간으로 설정 가능
-            },
-        });
+    const togglePomodoroTimer = () => {
+        // 이제 TimerDisplay 내부에서 처리됨
     };
 
+    // 마일스톤 메시지 생성 함수
+    const getMilestoneMessage = (seconds: number, lastMilestone: number) => {
+        // 처음 시작할 때
+        if (seconds < 60) return "집중 시작!";
+
+        // 마일스톤 달성 시점 (5분, 10분, 15분, 30분, 45분, 1시간, 1시간 30분, 2시간...)
+        const minutes = Math.floor(seconds / 60);
+
+        if (minutes === 5 && lastMilestone < 5 * 60) return "5분 달성! 좋은 출발이에요";
+        if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 계속 집중하세요";
+        if (minutes === 15 && lastMilestone < 15 * 60) return "15분 달성! 잘 하고 있어요";
+        if (minutes === 30 && lastMilestone < 30 * 60) return "30분 달성! 대단해요";
+        if (minutes === 45 && lastMilestone < 45 * 60) return "45분 달성! 끝까지 화이팅!";
+
+        if (minutes === 60 && lastMilestone < 60 * 60) return "1시간 달성! 놀라운 집중력이에요";
+        if (minutes === 90 && lastMilestone < 90 * 60) return "1시간 30분! 정말 대단해요";
+        if (minutes === 120 && lastMilestone < 120 * 60) return "2시간 달성! 프로 집중러!";
+
+        // 30분 단위로 계속 마일스톤 제공
+        if (minutes % 30 === 0 && lastMilestone < minutes * 60)
+            return `${minutes}분 달성! 믿기지 않는 집중력!`;
+
+        // 마일스톤 사이의 메시지
+        return milestone; // 기존 메시지 유지
+    };
+
+    // 시간 형식 함수
+    const formatElapsedTime = (seconds: number) => {
+        const hrs = Math.floor(seconds / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        return `${hrs > 0 ? `${hrs}시간 ` : ''} ${mins > 0 ? `${mins}분` : ''} ${secs}초`;
+    };
+
+    // 일반 타이머 흐르게하는 useEffect
     useEffect(() => {
-        // isPaused 제거, 항상 isTracking 상태일 때 타이머 진행
         if (isTracking) {
             timerInterval.current = setInterval(() => {
                 ++localElapsedTimeRef.current;
                 setDisplayedElapsedTime(localElapsedTimeRef.current);
+
+                // 마일스톤 메시지 업데이트
+                const newMilestone = getMilestoneMessage(localElapsedTimeRef.current, lastMilestoneTime);
+                if (newMilestone !== milestone) {
+                    setMilestone(newMilestone);
+                    setLastMilestoneTime(localElapsedTimeRef.current);
+
+                    // 새 마일스톤 달성 시 진동 피드백 (선택적)
+                    Vibration.vibrate(100);
+
+                    // 마일스톤 달성 시 애니메이션 효과
+                    Animated.sequence([
+                        Animated.timing(timerScale, {toValue: 1.3, duration: 300, useNativeDriver: true}),
+                        Animated.timing(timerScale, {toValue: 1, duration: 300, useNativeDriver: true}),
+                    ]).start();
+                }
             }, 1000);
         } else if (timerInterval.current !== null) {
             clearInterval(timerInterval.current);
@@ -79,21 +138,20 @@ export function Timer() {
                 clearInterval(timerInterval.current);
             }
         };
-    }, [isTracking]);
+    }, [isTracking, milestone, lastMilestoneTime]);
 
     useEffect(() => {
         if (isTracking) {
-            dispatch(setElapsedTime(localElapsedTimeRef.current));
+            dispatch(setActivityElapsedTime(localElapsedTimeRef.current));
         }
     }, [isTracking, dispatch]);
 
     useEffect(() => {
-        // isPaused 로직 제거
         if (isTracking) {
             Animated.loop(
                 Animated.sequence([
-                    Animated.timing(timerScale, {toValue: 1.1, duration: 500, useNativeDriver: true}),
-                    Animated.timing(timerScale, {toValue: 1, duration: 500, useNativeDriver: true}),
+                    Animated.timing(timerScale, {toValue: 1.05, duration: 1000, useNativeDriver: true}),
+                    Animated.timing(timerScale, {toValue: 1, duration: 1000, useNativeDriver: true}),
                 ])
             ).start();
         } else {
@@ -109,91 +167,41 @@ export function Timer() {
         }).start();
     }, []);
 
-    return (
-        <TouchableOpacity
-            onPress={handleNavigatePomodoro} // 누르면 뽀모도로 타이머 화면으로 이동
-            activeOpacity={0.5}
-        >
-            <Animated.View style={[
-                styles.trackingContainer,
-                {transform: [{translateX: slideAnim}]}]}
-            >
-                <Text
-                    style={[styles.description]}
-                    numberOfLines={1}
-                >
-                    <Text style={[styles.descriptionText]}>
-                        {emoji}
-                    </Text>
-                </Text>
-                <Animated.Text
-                    style={[styles.elapsedTime,
-                        {transform: [{scale: timerScale}]}]}
-                >
-                    {formatElapsedTime(displayedElapsedTime)}
-                </Animated.Text>
-                <View style={styles.buttons}>
-                    <TouchableOpacity
-                        style={styles.stopButton}
-                        onPress={handleStopTracking}
-                        activeOpacity={0.8}
-                    >
-                        <Text style={styles.stopButtonText}>종료</Text>
-                    </TouchableOpacity>
-                </View>
-            </Animated.View>
-        </TouchableOpacity>
-    )
-}
+    useEffect(() => {
+        if (isExpanded) {
+            Animated.timing(expandAnim, {
+                toValue: 1,
+                duration: 300,
+                useNativeDriver: true
+            }).start();
+        } else {
+            Animated.timing(expandAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true
+            }).start();
+        }
+    }, [isExpanded]);
 
-const styles = StyleSheet.create({
-    trackingContainer: {
-        backgroundColor: '#f5f5dc',
-        padding: 16,
-        marginHorizontal: 16,
-        borderRadius: 10,
-        marginVertical: 10,
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-    },
-    elapsedTime: {
-        fontSize: 35,
-        color: '#ff8c00',
-        fontWeight: 'bold',
-        marginLeft: 2,
-        textAlign: 'center',
-        width: '70%',
-    },
-    buttons: {
-        flexDirection: 'row',
-        justifyContent: "center",
-        width: '15%',
-    },
-    stopButton: {
-        backgroundColor: '#ff5a5f',
-        paddingVertical: 10,
-        paddingHorizontal: 15,
-        borderRadius: 12,
-        shadowColor: '#000',
-        shadowOffset: {width: 0, height: 2},
-        shadowOpacity: 0.3,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    stopButtonText: {
-        color: '#fff',
-        fontWeight: 'bold',
-        fontSize: 13,
-        textAlign: 'center',
-    },
-    description: {
-        fontSize: 30,
-        width: '15%',
-        textAlign: 'center',
-    },
-    descriptionText: {}
-});
+    return (
+        <GestureHandlerRootView style={{ zIndex: 10, flex: 1 }}>
+            <StyledView className="flex-1">
+                <TimerDisplay
+                    emoji={emoji}
+                    milestone={milestone}
+                    timerScale={timerScale}
+                    description={description}
+                    displayedElapsedTime={displayedElapsedTime}
+                    formatElapsedTime={formatElapsedTime}
+                    isExpanded={isExpanded}
+                    setIsExpanded={setIsExpanded}
+                    expandAnim={expandAnim}
+                    slideAnim={slideAnim}
+                    handleStopTracking={handleStopTracking}
+                    togglePomodoroTimer={togglePomodoroTimer}
+                    activityId={currentActivityId}
+                />
+            </StyledView>
+        </GestureHandlerRootView>
+    );
+}

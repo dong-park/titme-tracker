@@ -30,15 +30,9 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="activity/edit" options={{ headerShown: false }} />
-        <Stack.Screen name="activity/input" options={{ headerShown: false }} />
-        <Stack.Screen
-          name="pomodoro"
-          options={{
-            headerShown: false,
-            presentation: 'modal'  // 모달로 표시
-          }}
-        />
+        <Stack.Screen name="activity/edit" options={{ headerShown: false, presentation: 'modal' }} />
+        <Stack.Screen name="activity/input" options={{ headerShown: false, presentation: 'modal' }} />
+        {/* 포모도로 화면 삭제 - 이제 Timer 컴포넌트에 통합됨 */}
         <Stack.Screen name="+not-found" />
       </Stack>
     </ThemeProvider>

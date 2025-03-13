@@ -33,6 +33,8 @@ export interface MenuActivity {
     id: number,
     name: string;
     emoji: string;
+    pomodoroEnabled?: boolean;
+    todoListEnabled?: boolean;
 }
 
 export interface ActivityState {
@@ -58,6 +60,8 @@ const initialState: ActivityState = {
 const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 };
+
+
 
 const activitySlice = createSlice({
     name: 'activity',
@@ -133,6 +137,53 @@ const activitySlice = createSlice({
         setElapsedTime: (state, action: PayloadAction<number>) => {
             if (state.trackingActivity) state.trackingActivity.elapsedTime = action.payload;
         },
+
+        // Add this to the reducers object in activitySlice
+        addMenuActivity: (state, action: PayloadAction<{
+            name: string;
+            emoji: string;
+            pomodoroEnabled?: boolean;
+            todoListEnabled?: boolean;
+        }>) => {
+            const { name, emoji, pomodoroEnabled, todoListEnabled } = action.payload;
+            // Find the highest ID to ensure unique IDs
+            const maxId = state.menu.reduce((max, item) => Math.max(max, item.id), 0);
+            // Add new menu activity with a new ID
+            state.menu.push({
+                id: maxId + 1,
+                name,
+                emoji,
+                pomodoroEnabled,
+                todoListEnabled
+            });
+        },
+
+        updateMenuActivity: (state, action: PayloadAction<{
+            id: number;
+            name: string;
+            emoji: string;
+            pomodoroEnabled?: boolean;
+            todoListEnabled?: boolean;
+        }>) => {
+            const { id, name, emoji, pomodoroEnabled, todoListEnabled } = action.payload;
+            const menuIndex = state.menu.findIndex(item => item.id === id);
+            if (menuIndex !== -1) {
+                state.menu[menuIndex] = {
+                    ...state.menu[menuIndex],
+                    name,
+                    emoji,
+                    pomodoroEnabled,
+                    todoListEnabled
+                };
+            }
+        },
+
+        // activitySlice.tsx의 reducers 객체 내에 추가
+        removeMenuActivity: (state, action: PayloadAction<number>) => {
+            const idToRemove = action.payload;
+            state.menu = state.menu.filter(item => item.id !== idToRemove);
+        },
+
     },
 });
 
@@ -140,6 +191,9 @@ export const {
     startTracking,
     stopTracking,
     addFocusSegment,
-    setElapsedTime
+    setElapsedTime,
+    updateMenuActivity,
+    addMenuActivity,
+    removeMenuActivity
 } = activitySlice.actions;
 export default activitySlice.reducer;

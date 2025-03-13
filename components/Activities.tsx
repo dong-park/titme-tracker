@@ -1,32 +1,104 @@
 import {useDispatch, useSelector} from "react-redux";
 import {RootState} from "@/store/store";
-import {MenuActivity, startTracking, stopTracking} from "@/store/activitySlice";
-import {PanResponder, Platform, ScrollView, Text, TouchableOpacity, View} from "react-native";
-import React, {forwardRef, useImperativeHandle, useRef, useState} from "react";
-import Animated, {useAnimatedStyle, useSharedValue, withRepeat, withTiming} from 'react-native-reanimated';
-import {GestureHandlerRootView, LongPressGestureHandler, State} from 'react-native-gesture-handler';
-import {HandlerStateChangeEvent} from "react-native-gesture-handler/lib/typescript/handlers/gestureHandlerCommon";
-import {ScrollView as RNScrollView} from 'react-native';
+import {MenuActivity, startTracking, stopTracking, updateMenuActivity} from "@/store/activitySlice";
+import {
+    Platform,
+    ScrollView,
+    ScrollView as RNScrollView,
+    Text,
+    TouchableOpacity,
+    View
+} from "react-native";
+import React, {useEffect, useRef, useState} from "react";
+import {GestureHandlerRootView} from 'react-native-gesture-handler';
 import {useElapsedTime} from "@/components/ElapsedTimeContext";
+import Icon from 'react-native-vector-icons/Ionicons';
+import {classNames} from "@/utils/classNames";
+import {ActivityCard} from "./ActivityCard";
+import {useHorizontalScrollHandler} from "@/hooks/useHorizontalScrollHandler";
 import {router} from "expo-router";
 
 export function Activities() {
     const activityState = useSelector((state: RootState) => state.activity);
     const defaultActivities = activityState.menu;
-    const rowOneActivities = defaultActivities.filter((_, index) => index % 2 === 0);
-    const rowTwoActivities = defaultActivities.filter((_, index) => index % 2 !== 0);
     const dispatch = useDispatch();
-    const currentScrollX = useRef(0);
     const {localElapsedTimeRef, setLocalElapsedTime} = useElapsedTime();
     const [isEditMode, setIsEditMode] = useState(false);
 
+    // 각 활동에 대한 고유 키를 생성하기 위한 상태 추가
+    const [renderKey, setRenderKey] = useState(0);
+
+    // 컴포넌트 마운트 시 기존 활동 데이터 업데이트
+    useEffect(() => {
+        // 기존 활동들에 새 속성 추가
+        const updatedMenu = activityState.menu.map(activity => ({
+            ...activity,
+            pomodoroEnabled: activity.pomodoroEnabled || false,
+            todoListEnabled: activity.todoListEnabled || false
+        }));
+
+        // 스토어 업데이트
+        if (updatedMenu.length > 0) {
+            updatedMenu.forEach(activity => {
+                dispatch(updateMenuActivity({
+                    id: activity.id,
+                    name: activity.name,
+                    emoji: activity.emoji,
+                    pomodoroEnabled: activity.pomodoroEnabled,
+                    todoListEnabled: activity.todoListEnabled
+                }));
+            });
+        }
+    }, []);
+
+    // 활동을 두 행으로 분할하는 로직 수정
+    const organizeActivities = () => {
+        const rowOne = [];
+        const rowTwo = [];
+
+        // If there are 6 or fewer activities, organize them in two rows
+        if (defaultActivities.length <= 6) {
+            for (let i = 0; i < defaultActivities.length; i++) {
+                if (i < 3) {
+                    rowOne.push(defaultActivities[i]);
+                } else {
+                    rowTwo.push(defaultActivities[i]);
+                }
+            }
+        } else {
+            // For more than 6 activities, organize them as specified
+            for (let i = 0; i < 6; i++) {
+                if (i < 3) {
+                    rowOne.push(defaultActivities[i]);
+                } else {
+                    rowTwo.push(defaultActivities[i]);
+                }
+            }
+
+            // Starting from the 7th activity, alternate rows
+            for (let i = 6; i < defaultActivities.length; i++) {
+                if (i % 2 === 0) {
+                    rowOne.push(defaultActivities[i]);
+                } else {
+                    rowTwo.push(defaultActivities[i]);
+                }
+            }
+        }
+
+        return { rowOne, rowTwo };
+    };
+
+
+    const { rowOne, rowTwo } = organizeActivities();
 
     const handleActivityPress = async (activity: MenuActivity) => {
+        console.log('Activity pressed:', activity);
         const currentStartTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 
         if (activityState.isTracking) {
             await dispatch(stopTracking());
         }
+        
         setLocalElapsedTime(0)
         dispatch(startTracking({
             startTime: currentStartTime,
@@ -34,196 +106,56 @@ export function Activities() {
             emoji: activity.emoji,
             elapsedTime: 0,
         }));
-
     };
 
-    const RenderActivityCard = forwardRef(({activity}: { activity: MenuActivity }, ref) => {
-        const progress = useSharedValue(0);
-        const scale = useSharedValue(1);
-        const opacity = useSharedValue(1);
-        const isAnimating = useRef(false);
-        const rotation = useSharedValue(0);
-
-        const animatedStyle = useAnimatedStyle(() => ({
-            backgroundColor: progress.value >= 1 ? 'rgba(135, 206, 250, 0.6)' : 'rgba(135, 206, 250, 0.4)',
-            width: `${progress.value * 100}%`,
-            transform: [{scale: scale.value}],
-            opacity: opacity.value,
-        }));
-
-        const editAnimatedStyle = useAnimatedStyle(() => ({
-            transform: [
-                {rotate: `${rotation.value}deg`},
-            ],
-        }));
-        const onLongPressStateChange = (event: HandlerStateChangeEvent) => {
-            if (event.nativeEvent.state === State.BEGAN) {
-                progress.value = withTiming(1, {duration: 500});
-                isAnimating.current = true;
-            } else if (event.nativeEvent.state === State.END) {
-                resetAnimation();
-            } else if (event.nativeEvent.state === State.CANCELLED) {
-                resetAnimation();
-            }
-
-            if (progress.value >= 1) {
-                if (!isEditMode) {
-                    handleActivityPress(activity);
-                }
-            }
-        };
-
-        const resetAnimation = () => {
-            progress.value = 0;
-            scale.value = withTiming(1);
-            opacity.value = withTiming(1);
-            isAnimating.current = false;
-        };
-
-        const handlePress = () => {
-            resetAnimation();
-            handleActivityPress(activity);
-        };
-
-        useImperativeHandle(ref, () => ({
-            resetAnimation,
-        }));
-
-        if (isEditMode) {
-            rotation.value = withRepeat(withTiming(3, {duration: 100}), -1, true);
-        } else {
-            resetAnimation();
-        }
-
-        return Platform.OS === 'web' ? (
-            // 웹 환경에서는 클릭 이벤트만 사용
-            <TouchableOpacity
-                className="w-[90px] h-[90px] max-w-[90px] max-h-[90px] m-[5px] rounded-[10px] overflow-hidden"
-                onPress={handlePress}
-                activeOpacity={0.7}
-            >
-                <Animated.View style={[
-                    {
-                        zIndex: 1,
-                        position: 'absolute',
-                        left: 0,
-                        top: 0,
-                        right: 0,
-                        bottom: 0,
-                        height: 83,
-                        borderRadius: 10,
-                    },
-                    animatedStyle
-                ]}/>
-                <View className="z-[2] p-[15px] bg-white items-center rounded-[11px] border-b border-b-[#e5e7eb] shadow-md">
-                    <Text className="text-[28px] mb-[2px]" numberOfLines={1}>
-                        {activity.emoji}
-                    </Text>
-                    <Text className="text-base font-semibold" numberOfLines={1}>
-                        {activity.name}
-                    </Text>
-                </View>
-            </TouchableOpacity>
-        ) : (
-            <LongPressGestureHandler
-                onHandlerStateChange={onLongPressStateChange}
-                minDurationMs={500}
-            >
-                <View>
-                    <Animated.View style={[
-                        { width: 90, height: 90, maxWidth: 90, maxHeight: 90, margin: 5, borderRadius: 10, overflow: 'hidden' },
-                        editAnimatedStyle
-                    ]}>
-                        {!isEditMode && <Animated.View style={[
-                            {
-                                zIndex: 1,
-                                position: 'absolute',
-                                left: 0,
-                                top: 0,
-                                right: 0,
-                                bottom: 0,
-                                height: 83,
-                                borderRadius: 10,
-                            },
-                            animatedStyle
-                        ]}/>}
-                        <TouchableOpacity
-                            onPress={() => {
-                                resetAnimation()
-
-                                if (isEditMode) {
-                                    router.push(
-                                        {
-                                            pathname: `/activity/edit`,
-                                            params: {id: activity.id},
-                                        }
-                                    )
-                                }
-                            }}
-                            className="z-[2] p-[15px] bg-white items-center rounded-[11px] border-b border-b-[#e5e7eb] shadow-md"
-                        >
-                            <Text className="text-[28px] mb-[2px]" numberOfLines={1}>{activity.emoji}</Text>
-                            <Text className="text-base font-semibold" numberOfLines={1}>{activity.name}</Text>
-                        </TouchableOpacity>
-                    </Animated.View>
-                </View>
-            </LongPressGestureHandler>
-        );
-    });
-
-    // ref 타입 정의
-    const rowOneRefs = rowOneActivities.map(() => useRef<{ resetAnimation: () => void }>(null));
-    const rowTwoRefs = rowTwoActivities.map(() => useRef<{ resetAnimation: () => void }>(null));
-
-    const handleScrollBegin = () => {
-        rowOneRefs.concat(rowTwoRefs).forEach(ref => {
-            if (ref.current?.resetAnimation) {
-                ref.current.resetAnimation();
-            }
-        });
+    const toggleEditMode = () => {
+        // 수정 모드 전환 시 컴포넌트를 강제로 다시 렌더링하여 애니메이션 상태 초기화
+        setRenderKey(prev => prev + 1);
+        setIsEditMode(!isEditMode);
     };
 
-    // ScrollView 타입을 명시적으로 설정
+    const handleAddActivity = () => {
+        // 새 활동 추가 로직 구현
+        router.push(
+            {
+                pathname: `/activity/edit`
+            }
+        )
+        // 여기에 새 활동 추가를 위한 모달이나 화면 이동 로직을 추가할 수 있습니다.
+    };
+
     const scrollRef = useRef<RNScrollView>(null);
-    // PanResponder 설정에서 scrollRef.current를 직접 사용
-    const panResponder = useRef(
-        PanResponder.create({
-            onMoveShouldSetPanResponder: (_, gestureState) => {
-                return Math.abs(gestureState.dx) > Math.abs(gestureState.dy); // 수평 이동 감지
-            },
-            onPanResponderGrant: () => {
-                // PanResponder가 시작될 때 현재 스크롤 위치를 저장
-                if (scrollRef.current) {
-                    scrollRef.current.scrollTo({x: currentScrollX.current, animated: false});
-                }
-            },
-            onPanResponderMove: (_, gestureState) => {
-                if (scrollRef.current) {
-                    // 기존 스크롤 위치에 드래그 거리 더하기
-                    const newScrollPosition = currentScrollX.current - gestureState.dx;
-                    scrollRef.current.scrollTo({
-                        x: newScrollPosition,
-                        animated: false,
-                    });
-                }
-            },
-            onPanResponderRelease: (_, gestureState) => {
-                // 드래그가 끝난 후 현재 스크롤 위치 업데이트
-                currentScrollX.current -= gestureState.dx;
-            },
-        })
-    ).current;
+    const scrollHandlers = useHorizontalScrollHandler(scrollRef);
 
     return (
-        <GestureHandlerRootView>
-            <View className="flex-row justify-between mx-4 my-1 items-center">
-                <Text className="text-lg font-bold">Activities</Text>
-                <View>
+        <GestureHandlerRootView
+            className="mx-4">
+            <View className="flex-row justify-between my-1 items-center">
+                <Text className="text-lg font-bold">내 활동</Text>
+                <View className="flex-row">
                     <TouchableOpacity
-                        className="px-3 py-1.5 bg-[#007BFF] rounded-lg"
-                        onPress={() => setIsEditMode(!isEditMode)}
+                        className="py-1.5 rounded-lg flex-row items-center mr-2"
+                        onPress={handleAddActivity}
                     >
-                        <Text className="text-white text-sm">{isEditMode ? "Done" : "Edit"}</Text>
+                        <Icon
+                            name="add-circle-outline"
+                            size={18}
+                            color="black"
+                            style={{marginRight: 4}}
+                        />
+                        <Text className="text-sm">추가</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                        className="py-1.5 rounded-lg flex-row items-center"
+                        onPress={toggleEditMode}
+                    >
+                        <Icon
+                            name={isEditMode ? "checkmark" : "pencil"}
+                            size={16}
+                            color="black"
+                            style={{marginRight: 4}}
+                        />
+                        <Text className="text-sm">{isEditMode ? "완료" : "수정"}</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -231,21 +163,34 @@ export function Activities() {
                 ref={scrollRef}
                 horizontal
                 showsHorizontalScrollIndicator={false}
-                className={Platform.OS === 'web' ? "overflow-scroll" : ""}
-                contentContainerStyle={{ paddingHorizontal: 8, alignItems: 'center' }}
-                onScrollBeginDrag={handleScrollBegin}
+                className={classNames(
+                    Platform.OS === 'web' ? "overflow-scroll" : "",
+                )}
                 scrollEventThrottle={16}
-                {...(Platform.OS === 'web' ? panResponder.panHandlers : {})} // 웹 환경에서만 panHandlers 적용
+                contentContainerStyle={{
+                    justifyContent: defaultActivities.length <= 6 ? 'center' : 'flex-start', // 6개 이하일 경우 가운데 정렬
+                }}
+                {...(Platform.OS === 'web' ? scrollHandlers : {})}
             >
                 <View className="flex-col">
-                    <View className="flex-row mb-[5px]">
-                        {rowOneActivities.map((activity, index) => (
-                            <RenderActivityCard key={index} ref={rowOneRefs[index]} activity={activity}/>
+                    <View className="flex-row">
+                        {rowOne.map((activity, index) => (
+                            <ActivityCard
+                                key={`row1-${activity.id}-${index}-${renderKey}`}
+                                activity={activity}
+                                onActivityPress={handleActivityPress}
+                                isEditMode={isEditMode}
+                            />
                         ))}
                     </View>
-                    <View className="flex-row mb-[5px]">
-                        {rowTwoActivities.map((activity, index) => (
-                            <RenderActivityCard key={index} ref={rowTwoRefs[index]} activity={activity}/>
+                    <View className="flex-row">
+                        {rowTwo.map((activity, index) => (
+                            <ActivityCard
+                                key={`row2-${activity.id}-${index}-${renderKey}`}
+                                activity={activity}
+                                onActivityPress={handleActivityPress}
+                                isEditMode={isEditMode}
+                            />
                         ))}
                     </View>
                 </View>

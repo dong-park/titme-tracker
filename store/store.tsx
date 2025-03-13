@@ -1,11 +1,13 @@
 import { configureStore } from '@reduxjs/toolkit';
 import activityReducer from './activitySlice';
 import pomodoroReducer from './pomodoroSlice';
+import todoReducer from './todoSlice';
 
 const store = configureStore({
     reducer: {
         activity: activityReducer,
         pomodoro: pomodoroReducer,
+        todos: todoReducer,
     },
 });
 

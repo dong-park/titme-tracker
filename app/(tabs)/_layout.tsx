@@ -52,6 +52,15 @@ export default function TabLayout() {
                         }}
                     />
                     <Tabs.Screen
+                        name="clock"
+                        options={{
+                            title: '시계',
+                            tabBarIcon: ({ color, focused }) => (
+                                <TabBarIcon name={focused ? 'time' : 'time-outline'} color={color} size={30} />
+                            ),
+                        }}
+                    />
+                    <Tabs.Screen
                         name="explore"
                         options={{
                             title: 'Explore',
