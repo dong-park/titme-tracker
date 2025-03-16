@@ -53,11 +53,31 @@ export default function TabLayout() {
                     />
                     
                     <Tabs.Screen
+                        name="todo"
+                        options={{
+                            title: '할일',
+                            tabBarIcon: ({ color, focused }) => (
+                                <TabBarIcon name={focused ? 'list' : 'list-outline'} color={color} size={30} />
+                            ),
+                        }}
+                    />
+                    
+                    <Tabs.Screen
                         name="explore"
                         options={{
                             title: 'Explore',
                             tabBarIcon: ({ color, focused }) => (
                                 <TabBarIcon name={focused ? 'code-slash' : 'code-slash-outline'} color={color} size={30} />
+                            ),
+                        }}
+                    />
+                    
+                    <Tabs.Screen
+                        name="history"
+                        options={{
+                            title: '기록',
+                            tabBarIcon: ({ color, focused }) => (
+                                <TabBarIcon name={focused ? 'time' : 'time-outline'} color={color} size={30} />
                             ),
                         }}
                     />

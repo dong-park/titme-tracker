@@ -4,9 +4,9 @@ import {Timer} from "@/components/Timer";
 import {Provider, useSelector} from 'react-redux';
 import {RootState, store} from '@/store/store'
 import {Activities} from "@/components/Activities";
-import {RecentHistory} from "@/components/RecentActivities";
 import {ElapsedTimeProvider} from "@/components/ElapsedTimeContext";
 import { styled } from 'nativewind';
+import { TimeTracker } from '@/components/TimeTracker';
 
 export default function App() {
     return (
@@ -34,12 +34,15 @@ function Root() {
                     }}
                 >
                     {activityState.isTracking && (
-                        <View className="">
-                            <Timer />
-                        </View>
+                        <Timer />
                     )}
                     <Activities/>
-                    <RecentHistory/>
+                    
+                    <TimeTracker 
+                        startHour={7} 
+                        endHour={24} 
+                        date={new Date()} 
+                    />
                 </StyledScrollView>
             </ElapsedTimeProvider>
         </StyledSafeAreaView>

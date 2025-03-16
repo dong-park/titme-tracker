@@ -4,6 +4,9 @@ import {Stack} from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import {useEffect} from 'react';
 import 'react-native-reanimated';
+import React from 'react';
+import { Provider } from 'react-redux';
+import { store } from '@/store/store';
 
 import {useColorScheme} from '@/hooks/useColorScheme';
 
@@ -27,14 +30,15 @@ export default function RootLayout() {
   }
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="activity/edit" options={{ headerShown: false, presentation: 'modal' }} />
-        <Stack.Screen name="activity/input" options={{ headerShown: false, presentation: 'modal' }} />
-        {/* 포모도로 화면 삭제 - 이제 Timer 컴포넌트에 통합됨 */}
-        <Stack.Screen name="+not-found" />
-      </Stack>
-    </ThemeProvider>
+    <Provider store={store}>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="activity/edit" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="activity/input" options={{ headerShown: false, presentation: 'modal' }} />
+          <Stack.Screen name="+not-found" />
+        </Stack>
+      </ThemeProvider>
+    </Provider>
   );
 }

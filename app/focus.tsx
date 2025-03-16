@@ -36,10 +36,10 @@ export default function FocusPageWrapper() {
 
 function FocusPage() {
   const activityState = useSelector((state: RootState) => state.activity);
-  const { trackingActivity } = activityState;
+  const { trackingActivity } = activityState || {};
   const dispatch = useDispatch();
-  const isTracking = useSelector((state: RootState) => state.activity.isTracking);
-  const elapsedTime = useSelector((state: RootState) => state.activity.elapsedTime);
+  const isTracking = useSelector((state: RootState) => state.activity?.isTracking);
+  const elapsedTime = useSelector((state: RootState) => state.activity?.elapsedTime || 0);
   const {localElapsedTimeRef, setLocalElapsedTime} = useElapsedTime();
   
   const [activeIndex, setActiveIndex] = useState(0);
@@ -56,10 +56,10 @@ function FocusPage() {
   
   // 현재 추적 중인 활동의 ID 찾기
   const currentActivityId = useSelector((state: RootState) => {
-    if (!trackingActivity?.description || !trackingActivity?.emoji) return undefined;
+    if (!state.activity?.trackingActivity?.description || !state.activity?.trackingActivity?.emoji) return undefined;
     
-    const foundActivity = state.activity.menu.find(
-      activity => activity.name === trackingActivity.description && activity.emoji === trackingActivity.emoji
+    const foundActivity = state.activity?.menu.find(
+      activity => activity.name === state.activity.trackingActivity?.description && activity.emoji === state.activity.trackingActivity?.emoji
     );
     
     return foundActivity?.id;
@@ -67,7 +67,7 @@ function FocusPage() {
   
   // 현재 활동 정보 가져오기
   const currentActivity = useSelector((state: RootState) => {
-    if (!currentActivityId) return null;
+    if (!currentActivityId || !state.activity) return null;
     return state.activity.menu.find(item => item.id === currentActivityId) || null;
   });
   
@@ -129,7 +129,7 @@ function FocusPage() {
   }, [milestone]);
   
   const handleStopTracking = useCallback(() => {
-    if (activityState.trackingActivity) {
+    if (activityState?.trackingActivity) {
       dispatch(stopTracking());
       Vibration.vibrate(500);
       localElapsedTimeRef.current = 0;
@@ -143,7 +143,7 @@ function FocusPage() {
       // 메인 화면으로 돌아가기
       router.back();
     }
-  }, [activityState.trackingActivity, dispatch, localElapsedTimeRef]);
+  }, [activityState?.trackingActivity, dispatch, localElapsedTimeRef]);
   
   // 일반 타이머 흐르게하는 useEffect
   useEffect(() => {
@@ -199,7 +199,7 @@ function FocusPage() {
     }
   }, [isTracking, timerScale]);
   
-  if (!trackingActivity) {
+  if (!trackingActivity || !activityState) {
     return (
       <StyledSafeAreaView className="flex-1 bg-slate-100 items-center justify-center">
         <StyledText className="text-lg text-gray-500">현재 진행 중인 활동이 없습니다</StyledText>
@@ -250,7 +250,7 @@ function FocusPage() {
             <StyledView className="items-center">
               <StyledText className="text-gray-500 text-sm">세션</StyledText>
               <StyledText className="text-lg font-medium">
-                {trackingActivity.focusSegments.length || 1}
+                {trackingActivity.focusSegments?.length || 1}
               </StyledText>
             </StyledView>
           </StyledView>

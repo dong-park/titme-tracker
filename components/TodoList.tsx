@@ -1,200 +1,148 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
-import { addTodo, toggleTodo, deleteTodo, TodoItem } from '@/store/todoSlice';
-import { createSelector } from '@reduxjs/toolkit';
+import { styled } from 'nativewind';
 
-interface TodoListProps {
-  activityId: number;
+// Tailwind로 스타일된 컴포넌트
+const StyledView = styled(View);
+const StyledText = styled(Text);
+const StyledTextInput = styled(TextInput);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledSafeAreaView = styled(SafeAreaView);
+
+// 목 데이터 타입 정의
+interface TodoItem {
+  id: string;
+  text: string;
+  completed: boolean;
 }
 
-// 메모이제이션된 셀렉터 생성
-const selectTodosByActivityId = createSelector(
-  [(state: RootState) => state.todos?.todosByActivity, (state: RootState, activityId: number) => activityId],
-  (todosByActivity, activityId) => todosByActivity?.[activityId] || []
-);
+interface TodoListProps {
+  activityId?: number;
+}
 
 export function TodoList({ activityId }: TodoListProps) {
-  const dispatch = useDispatch();
-  
-  // 메모이제이션된 셀렉터 사용
-  const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
-  
+  const [todos, setTodos] = useState<TodoItem[]>([
+    { id: '1', text: '할 일 1', completed: false },
+    { id: '2', text: '할 일 2', completed: false },
+    { id: '3', text: '할 일 3', completed: false },
+  ]);
   const [newTodo, setNewTodo] = useState('');
 
   // 새 Todo 추가
   const handleAddTodo = useCallback(() => {
     if (newTodo.trim() === '') return;
     
-    dispatch(addTodo({
-      activityId,
-      text: newTodo.trim()
-    }));
+    const newItem: TodoItem = {
+      id: Date.now().toString(),
+      text: newTodo.trim(),
+      completed: false
+    };
     
+    setTodos(prev => [...prev, newItem]);
     setNewTodo('');
-  }, [dispatch, activityId, newTodo]);
+  }, [newTodo]);
 
   // Todo 완료 상태 토글
-  const handleToggleTodo = useCallback((todoId: string) => {
-    dispatch(toggleTodo({
-      activityId,
-      todoId
-    }));
-  }, [dispatch, activityId]);
+  const handleToggleTodo = useCallback((id: string) => {
+    setTodos(prev => 
+      prev.map(todo => 
+        todo.id === id ? { ...todo, completed: !todo.completed } : todo
+      )
+    );
+  }, []);
 
   // Todo 삭제
-  const handleDeleteTodo = useCallback((todoId: string) => {
-    dispatch(deleteTodo({
-      activityId,
-      todoId
-    }));
-  }, [dispatch, activityId]);
+  const handleDeleteTodo = useCallback((id: string) => {
+    setTodos(prev => prev.filter(todo => todo.id !== id));
+  }, []);
 
   // Todo 아이템 렌더링
-  const renderTodoItem = useCallback((item: TodoItem) => (
-    <View style={styles.todoItem} key={item.id}>
-      <TouchableOpacity 
-        style={styles.checkbox} 
+  const renderItem = useCallback(({ item }: { item: TodoItem }) => (
+    <StyledView className="flex-row items-center py-2 px-4 border-b border-gray-100">
+      <StyledTouchableOpacity
+        className="mr-3"
         onPress={() => handleToggleTodo(item.id)}
       >
-        {item.completed ? (
-          <Icon name="checkmark-circle" size={24} color="#4CAF50" />
-        ) : (
-          <Icon name="ellipse-outline" size={24} color="#888" />
-        )}
-      </TouchableOpacity>
+        <StyledView className={`w-5 h-5 rounded-sm border ${item.completed ? 'bg-blue-500 border-blue-500' : 'border-blue-500'} flex items-center justify-center`}>
+          {item.completed && <Icon name="checkmark" size={16} color="#FFFFFF" />}
+        </StyledView>
+      </StyledTouchableOpacity>
       
-      <Text 
-        style={[
-          styles.todoText,
-          item.completed && styles.completedText
-        ]}
+      <StyledText 
+        className={`flex-1 text-base ${item.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}
       >
         {item.text}
-      </Text>
+      </StyledText>
       
-      <TouchableOpacity 
-        style={styles.deleteButton}
+      <StyledTouchableOpacity
+        className="ml-2 p-2"
         onPress={() => handleDeleteTodo(item.id)}
       >
-        <Icon name="trash-outline" size={20} color="#FF5252" />
-      </TouchableOpacity>
-    </View>
+        <Icon name="trash-outline" size={18} color="#FF3B30" />
+      </StyledTouchableOpacity>
+    </StyledView>
   ), [handleToggleTodo, handleDeleteTodo]);
 
-  // 투두 아이템 목록 메모이제이션
-  const todoItems = useMemo(() => {
-    return todos.map(item => renderTodoItem(item));
-  }, [todos, renderTodoItem]);
-
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>할 일 목록</Text>
-      </View>
+    <StyledSafeAreaView className="flex-1 bg-gray-50">
+      {/* 헤더 */}
+      <StyledView className="px-4 py-3 bg-white border-b border-gray-200">
+        <StyledView className="flex-row items-center">
+          <Icon name="list" size={22} color="#007AFF" />
+          <StyledText className="ml-2 text-lg font-semibold">할 일 목록</StyledText>
+        </StyledView>
+      </StyledView>
       
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={styles.input}
+      {/* 할 일 목록 */}
+      <FlatList
+        data={todos}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        className="flex-1 bg-white"
+        ListEmptyComponent={
+          <StyledView className="flex-1 justify-center items-center py-10">
+            <Icon name="checkmark-done-circle-outline" size={50} color="#CCCCCC" />
+            <StyledText className="mt-2 text-gray-400">할 일이 없습니다</StyledText>
+          </StyledView>
+        }
+      />
+      
+      {/* 하단 입력 영역 */}
+      <StyledView className="px-4 py-3 bg-white border-t border-gray-200">
+        <StyledView className="flex-row items-center">
+          <StyledTouchableOpacity
+            className="mr-3"
+            onPress={() => {}}
+          >
+            <Icon name="arrow-back" size={24} color="#007AFF" />
+            <StyledText className="text-blue-500">뒤로</StyledText>
+          </StyledTouchableOpacity>
+          
+          <StyledView className="flex-1 flex-row justify-center">
+            <Icon name="time-outline" size={24} color="#8E8E93" />
+          </StyledView>
+          
+          <StyledTouchableOpacity
+            className="ml-3 bg-red-500 rounded-full px-4 py-1"
+            onPress={handleAddTodo}
+          >
+            <StyledText className="text-white font-medium">등록</StyledText>
+          </StyledTouchableOpacity>
+        </StyledView>
+      </StyledView>
+      
+      {/* 새 할 일 입력 */}
+      <StyledView className="px-4 py-3 bg-white">
+        <StyledTextInput
+          className="bg-gray-100 rounded-lg px-4 py-2 text-base"
           placeholder="새로운 할 일 추가..."
           value={newTodo}
           onChangeText={setNewTodo}
           onSubmitEditing={handleAddTodo}
+          returnKeyType="done"
         />
-        <TouchableOpacity 
-          style={styles.addButton}
-          onPress={handleAddTodo}
-        >
-          <Icon name="add-circle" size={36} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-      
-      {todos.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Icon name="list" size={50} color="#ddd" />
-          <Text style={styles.emptyText}>할 일이 없습니다</Text>
-        </View>
-      ) : (
-        <ScrollView style={styles.list}>
-          {todoItems}
-        </ScrollView>
-      )}
-    </View>
+      </StyledView>
+    </StyledSafeAreaView>
   );
-}
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    width: '100%',
-    padding: 16,
-  },
-  header: {
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    marginBottom: 20,
-    alignItems: 'center',
-  },
-  input: {
-    flex: 1,
-    height: 46,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: 16,
-    backgroundColor: '#f9f9f9',
-  },
-  addButton: {
-    marginLeft: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  list: {
-    flex: 1,
-    maxHeight: 300, // 최대 높이 제한
-  },
-  todoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  checkbox: {
-    marginRight: 10,
-  },
-  todoText: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333',
-  },
-  completedText: {
-    textDecorationLine: 'line-through',
-    color: '#888',
-  },
-  deleteButton: {
-    padding: 5,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 200,
-  },
-  emptyText: {
-    marginTop: 10,
-    fontSize: 16,
-    color: '#888',
-  },
-}); 
+} 

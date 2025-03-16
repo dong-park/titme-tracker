@@ -1,17 +1,5 @@
 // components/timer/PomodoroTimer.tsx
-import React, {useState, useMemo, useEffect} from "react";
-import {Text, TextInput, TouchableOpacity, View, Alert, Modal} from "react-native";
-import {useDispatch, useSelector} from "react-redux";
-import {RootState} from "@/store/store";
-import {styled} from "nativewind";
-import { PanGestureHandler } from 'react-native-gesture-handler';
-import Animated, {
-    runOnJS,
-    useAnimatedGestureHandler,
-    useSharedValue,
-} from 'react-native-reanimated';
-import { debounce } from 'lodash';
-import Svg, { Line, G } from "react-native-svg";
+import { addFocusSegment } from "@/store/activitySlice";
 import {
     incrementColorIndex,
     incrementCycleCount,
@@ -23,9 +11,20 @@ import {
     setRunning,
     tick
 } from "@/store/pomodoroSlice";
-import { addFocusSegment } from "@/store/activitySlice";
+import { RootState } from "@/store/store";
+import { debounce } from 'lodash';
+import { styled } from "nativewind";
+import React, { useEffect, useMemo, useState } from "react";
+import { Alert, Modal, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { PanGestureHandler } from 'react-native-gesture-handler';
+import Animated, {
+    runOnJS,
+    useAnimatedGestureHandler,
+    useSharedValue,
+} from 'react-native-reanimated';
+import { G, Line } from "react-native-svg";
+import { useDispatch, useSelector } from "react-redux";
 import { TimerClock } from "./TimerClock";
-import { TimerUtils } from "./TimerUtils";
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -38,7 +37,17 @@ interface PomodoroTimerProps {
 
 export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
     const dispatch = useDispatch();
-    const pomodoroState = useSelector((state: RootState) => state.pomodoro);
+    const pomodoroState = useSelector((state: RootState) => state.pomodoro) || {
+        pomodoroDuration: 1800,
+        remainingTime: 1800,
+        isRunning: false,
+        colorIndex: 0,
+        cycleCount: 0,
+        currentSegmentDescription: "",
+        currentSegmentStart: new Date().toISOString(),
+        elapsedTime: 0,
+        maxDuration: 3600
+    };
     const activityState = useSelector((state: RootState) => state.activity);
 
     const { pomodoroDuration, remainingTime, isRunning, colorIndex, cycleCount, currentSegmentDescription } = pomodoroState;
@@ -112,10 +121,15 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
         ].join(" ");
     };
 
-
-
     // calculateProgress 함수 수정
     const calculateProgress = () => {
+        if (!pomodoroState.maxDuration) {
+            return {
+                totalAngle: 0,
+                remainingAngle: 0,
+            };
+        }
+        
         // 현재 설정된 시간을 1시간 기준으로 계산
         const durationProgress = pomodoroDuration / pomodoroState.maxDuration;
         const totalAngle = durationProgress * 360;
@@ -132,6 +146,8 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
     // 시간 업데이트 함수를 별도로 분리
     const debouncedUpdateTime = useMemo(
         () => debounce((angle: number) => {
+            if (!pomodoroState.maxDuration) return; // pomodoroState가 undefined인 경우 처리
+            
             const normalizedAngle = angle < 0 ? angle + 360 : angle;
             // 초 단위 시간 계산
             const rawTime = (normalizedAngle / 360) * pomodoroState.maxDuration;
@@ -141,7 +157,7 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
             dispatch(setPomodoroDuration(newTime));
             dispatch(setElapsedTime(0)); // elapsedTime 초기화 추가
         }, 16),
-        [dispatch]
+        [dispatch, pomodoroState]
     );
 
     // 제스처 핸들러 정의
@@ -211,6 +227,22 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
 
     // 시침 그리기 함수
     const renderHourHand = () => {
+        if (!pomodoroState || !pomodoroState.maxDuration) {
+            return (
+                <G>
+                    <Line
+                        x1={radius}
+                        y1={radius}
+                        x2={radius}
+                        y2={radius - 80}
+                        stroke="#007AFF"
+                        strokeWidth={3}
+                        strokeLinecap="round"
+                    />
+                </G>
+            );
+        }
+        
         const progress = remainingTime / pomodoroState.maxDuration;
         const angle = progress * 360 - 90; // -90도는 12시 방향을 시작점으로 하기 위함
         const handLength = radius - 80;

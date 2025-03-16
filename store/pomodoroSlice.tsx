@@ -1,6 +1,5 @@
-// pomodoroSlice.ts
+// pomodoroSlice.tsx
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import {state} from "sucrase/dist/types/parser/traverser/base";
 
 interface PomodoroState {
     pomodoroDuration: number;
