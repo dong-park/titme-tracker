@@ -133,7 +133,11 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
     const debouncedUpdateTime = useMemo(
         () => debounce((angle: number) => {
             const normalizedAngle = angle < 0 ? angle + 360 : angle;
-            const newTime = Math.round((normalizedAngle / 360) * pomodoroState.maxDuration);
+            // 초 단위 시간 계산
+            const rawTime = (normalizedAngle / 360) * pomodoroState.maxDuration;
+            // 1분(60초) 단위로 반올림
+            const minutesRounded = Math.round(rawTime / 60);
+            const newTime = minutesRounded * 60;
             dispatch(setPomodoroDuration(newTime));
             dispatch(setElapsedTime(0)); // elapsedTime 초기화 추가
         }, 16),
@@ -179,11 +183,11 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
     // 시계 눈금 그리기 함수
     const renderClockMarks = () => {
         const marks = [];
-        for (let i = 0; i < 12; i++) {
-            const angle = (i * 30) * (Math.PI / 180); // 30도씩 (360/12)
-            const isHour = i % 3 === 0; // 시간 단위(3의 배수)는 더 긴 선으로
-            const length = isHour ? 15 : 10;
-            const strokeWidth = isHour ? 2 : 1;
+        for (let i = 0; i < 60; i++) {
+            const angle = (i * 6) * (Math.PI / 180); // 6도씩 (360/60)
+            const is5Min = i % 5 === 0; // 5분 단위는 더 긴 선으로
+            const length = is5Min ? 15 : 5;
+            const strokeWidth = is5Min ? 2 : 1;
 
             const x1 = radius + (radius - 25) * Math.cos(angle);
             const y1 = radius + (radius - 25) * Math.sin(angle);
@@ -234,19 +238,19 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
         dispatch(setRunning(!isRunning));
     };
 
-    const addTenMinutes = () => {
-        dispatch(setPomodoroDuration(pomodoroDuration + 600));
+    const addOneMinute = () => {
+        dispatch(setPomodoroDuration(pomodoroDuration + 60));
     };
 
-    const subtractTenMinutes = () => {
+    const subtractOneMinute = () => {
         const elapsed = pomodoroDuration - remainingTime;
-        const newDuration = Math.max(elapsed + 60, pomodoroDuration - 600);
+        const newDuration = Math.max(elapsed + 60, pomodoroDuration - 60);
         dispatch(setPomodoroDuration(newDuration));
     };
 
     const canSubtractTime = () => {
         const elapsed = pomodoroDuration - remainingTime;
-        return (pomodoroDuration - 600) > elapsed;
+        return (pomodoroDuration - 60) > elapsed;
     };
 
     const handleDescriptionChange = (text: string) => {
@@ -393,11 +397,11 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
             <StyledView className="flex-row justify-center gap-2 mb-2">
                 <StyledTouchableOpacity
                     className="bg-gray-200 px-3 py-2 rounded"
-                    onPress={subtractTenMinutes}
+                    onPress={subtractOneMinute}
                     disabled={!canSubtractTime() || isRunning}
                     style={{ opacity: (!canSubtractTime() || isRunning) ? 0.5 : 1 }}
                 >
-                    <StyledText>-10분</StyledText>
+                    <StyledText>-1분</StyledText>
                 </StyledTouchableOpacity>
 
                 <StyledTouchableOpacity
@@ -411,11 +415,11 @@ export const PomodoroTimer: React.FC<PomodoroTimerProps> = ({ onClose }) => {
 
                 <StyledTouchableOpacity
                     className="bg-gray-200 px-3 py-2 rounded"
-                    onPress={addTenMinutes}
+                    onPress={addOneMinute}
                     disabled={isRunning}
                     style={{ opacity: isRunning ? 0.5 : 1 }}
                 >
-                    <StyledText>+10분</StyledText>
+                    <StyledText>+1분</StyledText>
                 </StyledTouchableOpacity>
             </StyledView>
 

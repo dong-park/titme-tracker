@@ -75,7 +75,7 @@ export function Timer() {
     }, [activityState.trackingActivity, dispatch, localElapsedTimeRef, slideAnim]);
 
     const togglePomodoroTimer = useCallback(() => {
-        // 이제 TimerDisplay 내부에서 처리됨
+        // 더 이상 사용하지 않음
         console.log("포모도로 타이머 토글");
     }, []);
 

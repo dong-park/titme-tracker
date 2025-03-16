@@ -34,7 +34,7 @@ function Root() {
                     }}
                 >
                     {activityState.isTracking && (
-                        <View className="flex-1">
+                        <View className="">
                             <Timer />
                         </View>
                     )}
