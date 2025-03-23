@@ -1,0 +1,623 @@
+import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { View, Text, TextInput, TouchableOpacity, FlatList, ScrollView, Alert } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { styled } from 'nativewind';
+import { useSelector, useDispatch } from 'react-redux';
+import { createSelector } from '@reduxjs/toolkit';
+import { RootState } from '@/store/store';
+import { addTodo, toggleTodo, deleteTodo, TodoCategory, TodoItem, addCategory, initializeActivity, deleteCategory, reorderTodos, moveTodoToCategory } from '@/store/todoSlice';
+import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring, runOnJS } from 'react-native-reanimated';
+
+// Tailwind로 스타일된 컴포넌트
+const StyledView = styled(View);
+const StyledText = styled(Text);
+const StyledTextInput = styled(TextInput);
+const StyledTouchableOpacity = styled(TouchableOpacity);
+const StyledFlatList = styled(FlatList);
+const StyledScrollView = styled(ScrollView);
+const StyledAnimatedView = styled(Animated.View);
+
+// 컴포넌트 props 타입 정의
+interface TodoListProps {
+  activityId: number;
+}
+
+// 메모이제이션된 선택자 생성
+const selectTodosByActivityId = createSelector(
+  [(state: RootState) => state.todos.todosByActivity, (_, activityId: number) => activityId],
+  (todosByActivity, activityId) => todosByActivity[activityId] || []
+);
+
+// 카테고리 선택자 생성
+const selectCategoriesByActivityId = createSelector(
+  [(state: RootState) => state.todos.categoriesByActivity, (_, activityId: number) => activityId],
+  (categoriesByActivity, activityId) => categoriesByActivity[activityId] || []
+);
+
+export function TodoList({ activityId }: TodoListProps) {
+  const dispatch = useDispatch();
+  const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
+  const categories = useSelector((state: RootState) => selectCategoriesByActivityId(state, activityId));
+  const [newTodo, setNewTodo] = useState('');
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null); // 기본값은 null (카테고리 미선택)
+  const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [addingTodoForCategoryId, setAddingTodoForCategoryId] = useState<number | null>(null);
+  const [newCategoryTitle, setNewCategoryTitle] = useState('');
+  const newCategoryInputRef = useRef<TextInput>(null);
+  const newTodoInputRef = useRef<TextInput>(null);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [selectedMenuCategoryId, setSelectedMenuCategoryId] = useState<number | null>(null);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0 });
+  
+  // 드래그앤드롭 상태
+  const [draggedTodo, setDraggedTodo] = useState<{ id: string, categoryId: number, index: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dropTargetCategory, setDropTargetCategory] = useState<number | null>(null);
+  const [dropTargetIndex, setDropTargetIndex] = useState<number | null>(null);
+  
+  // 애니메이션 값
+  const translateX = useSharedValue(0);
+  const translateY = useSharedValue(0);
+  const scale = useSharedValue(1);
+  const zIndex = useSharedValue(1);
+  const opacity = useSharedValue(1);
+
+  // 활동 초기화 (첫 렌더링 시 기본 카테고리 생성)
+  useEffect(() => {
+    dispatch(initializeActivity({ activityId }));
+  }, [activityId, dispatch]);
+
+  // 카테고리 추가 시작
+  const handleStartAddCategory = () => {
+    setIsAddingCategory(true);
+    // 다음 렌더링 사이클에서 인풋에 포커스
+    setTimeout(() => {
+      newCategoryInputRef.current?.focus();
+    }, 100);
+  };
+
+  // 카테고리 추가 완료
+  const handleAddCategory = () => {
+    if (newCategoryTitle.trim() === '') {
+      setIsAddingCategory(false);
+      return;
+    }
+    
+    dispatch(addCategory({
+      activityId,
+      title: newCategoryTitle.trim()
+    }));
+    
+    setNewCategoryTitle('');
+    setIsAddingCategory(false);
+  };
+
+  // 카테고리 추가 취소
+  const handleCancelAddCategory = () => {
+    setNewCategoryTitle('');
+    setIsAddingCategory(false);
+  };
+
+  // 카테고리 선택/해제 토글
+  const handleCategoryToggle = (categoryId: number) => {
+    if (selectedCategoryId === categoryId) {
+      // 이미 선택된 카테고리를 다시 누르면 선택 해제 (기본 카테고리로 설정)
+      setSelectedCategoryId(null);
+    } else {
+      // 다른 카테고리 선택
+      setSelectedCategoryId(categoryId);
+    }
+  };
+
+  // 할일 추가 시작 (특정 카테고리에)
+  const handleStartAddTodoToCategory = (categoryId: number) => {
+    setAddingTodoForCategoryId(categoryId);
+    // 다음 렌더링 사이클에서 인풋에 포커스
+    setTimeout(() => {
+      newTodoInputRef.current?.focus();
+    }, 100);
+  };
+
+  // 할일 추가 완료
+  const handleAddTodoSubmit = () => {
+    if (newTodo.trim() === '') {
+      setAddingTodoForCategoryId(null);
+      return;
+    }
+    
+    dispatch(addTodo({
+      activityId,
+      text: newTodo.trim(),
+      categoryId: addingTodoForCategoryId || 1
+    }));
+    
+    setNewTodo('');
+    setAddingTodoForCategoryId(null);
+  };
+
+  // 할일 추가 취소
+  const handleCancelAddTodo = () => {
+    setNewTodo('');
+    setAddingTodoForCategoryId(null);
+  };
+
+  // 할일 완료/미완료 토글
+  const handleToggleTodo = (todoId: string) => {
+    dispatch(toggleTodo({
+      activityId,
+      todoId
+    }));
+  };
+
+  // 할일 삭제
+  const handleDeleteTodo = (todoId: string) => {
+    Alert.alert(
+      '할일 삭제',
+      '이 할일을 삭제하시겠습니까?',
+      [
+        {
+          text: '취소',
+          style: 'cancel'
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(deleteTodo({
+              activityId,
+              todoId
+            }));
+          }
+        }
+      ]
+    );
+  };
+
+  // 카테고리 메뉴 닫기
+  const handleCloseMenu = () => {
+    setMenuVisible(false);
+    setSelectedMenuCategoryId(null);
+  };
+
+  // 카테고리 삭제
+  const handleDeleteCategory = () => {
+    if (!selectedMenuCategoryId) return;
+    
+    // 기본 카테고리(id: 1)는 삭제 불가
+    if (selectedMenuCategoryId === 1) {
+      Alert.alert('알림', '기본 카테고리는 삭제할 수 없습니다.');
+      handleCloseMenu();
+      return;
+    }
+    
+    Alert.alert(
+      '카테고리 삭제',
+      '이 카테고리를 삭제하시겠습니까?\n카테고리 내 모든 할일은 기본 카테고리로 이동합니다.',
+      [
+        {
+          text: '취소',
+          style: 'cancel',
+          onPress: handleCloseMenu
+        },
+        {
+          text: '삭제',
+          style: 'destructive',
+          onPress: () => {
+            dispatch(deleteCategory({
+              activityId,
+              id: selectedMenuCategoryId
+            }));
+            
+            // 삭제된 카테고리가 현재 선택된 카테고리인 경우, 선택 해제
+            if (selectedCategoryId === selectedMenuCategoryId) {
+              setSelectedCategoryId(null);
+            }
+            
+            handleCloseMenu();
+          }
+        }
+      ]
+    );
+  };
+
+  // 할일 그룹화 (카테고리별)
+  const groupedTodos = useCallback(() => {
+    const result: Record<number, TodoItem[]> = {};
+    
+    // 모든 카테고리에 대한 빈 배열 초기화
+    categories.forEach((category: TodoCategory) => {
+      result[category.id] = [];
+    });
+    
+    // 할일을 카테고리별로 그룹화
+    todos.forEach((todo: TodoItem) => {
+      if (result[todo.categoryId]) {
+        result[todo.categoryId].push(todo);
+      } else {
+        // 카테고리가 없는 경우 기본 카테고리(id: 1)에 추가
+        if (result[1]) {
+          result[1].push(todo);
+        }
+      }
+    });
+    
+    return result;
+  }, [todos, categories]);
+
+  // 드래그 시작 핸들러
+  const handleDragStart = (todo: TodoItem, categoryId: number, index: number) => {
+    setDraggedTodo({ id: todo.id, categoryId, index });
+    setIsDragging(true);
+    scale.value = withSpring(1.05);
+    zIndex.value = 10;
+    opacity.value = 0.8;
+  };
+  
+  // 드래그 중 핸들러
+  const handleDragMove = (translationX: number, translationY: number) => {
+    translateX.value = translationX;
+    translateY.value = translationY;
+  };
+  
+  // 드래그 종료 핸들러
+  const handleDragEnd = () => {
+    if (draggedTodo && dropTargetCategory !== null) {
+      // 카테고리 간 이동
+      if (dropTargetCategory !== draggedTodo.categoryId) {
+        dispatch(moveTodoToCategory({
+          activityId,
+          todoId: draggedTodo.id,
+          targetCategoryId: dropTargetCategory,
+          targetIndex: dropTargetIndex !== null ? dropTargetIndex : undefined
+        }));
+      } 
+      // 같은 카테고리 내 순서 변경
+      else if (dropTargetIndex !== null && dropTargetIndex !== draggedTodo.index) {
+        const todosInCategory = groupedTodos()[draggedTodo.categoryId] || [];
+        const newOrderIds = [...todosInCategory.map(t => t.id)];
+        
+        // 드래그 중인 항목을 현재 위치에서 제거
+        const [movedItem] = newOrderIds.splice(draggedTodo.index, 1);
+        // 드롭 위치에 삽입
+        newOrderIds.splice(dropTargetIndex, 0, movedItem);
+        
+        dispatch(reorderTodos({
+          activityId,
+          categoryId: draggedTodo.categoryId,
+          newOrder: newOrderIds
+        }));
+      }
+    }
+    
+    // 상태 초기화
+    setDraggedTodo(null);
+    setIsDragging(false);
+    setDropTargetCategory(null);
+    setDropTargetIndex(null);
+    
+    // 애니메이션 값 초기화
+    translateX.value = withSpring(0);
+    translateY.value = withSpring(0);
+    scale.value = withSpring(1);
+    zIndex.value = 1;
+    opacity.value = 1;
+  };
+  
+  // 드롭 타겟 설정 핸들러
+  const handleDropTarget = (categoryId: number, index: number) => {
+    setDropTargetCategory(categoryId);
+    setDropTargetIndex(index);
+  };
+
+  // 카테고리 메뉴 열기
+  const handleOpenCategoryMenu = (categoryId: number, event: any) => {
+    // 이벤트에서 터치 위치 가져오기
+    const { pageX, pageY } = event.nativeEvent;
+    
+    setSelectedMenuCategoryId(categoryId);
+    setMenuPosition({ top: pageY + 30, left: pageX - 100 });
+    setMenuVisible(true);
+  };
+
+  // Todo 아이템 렌더링
+  const renderTodoItem = useCallback((todo: TodoItem, index: number, categoryId: number, totalItems: number) => {
+    const isBeingDragged = draggedTodo?.id === todo.id;
+    
+    // 드래그 제스처 설정
+    const panGesture = Gesture.Pan()
+      .onBegin(() => {
+        runOnJS(handleDragStart)(todo, categoryId, index);
+      })
+      .onUpdate((e) => {
+        runOnJS(handleDragMove)(e.translationX, e.translationY);
+      })
+      .onEnd(() => {
+        runOnJS(handleDragEnd)();
+      });
+    
+    // 애니메이션 스타일
+    const animatedStyle = useAnimatedStyle(() => {
+      if (isBeingDragged) {
+        return {
+          transform: [
+            { translateX: translateX.value },
+            { translateY: translateY.value },
+            { scale: scale.value }
+          ],
+          zIndex: zIndex.value,
+          opacity: opacity.value,
+        };
+      }
+      return {};
+    });
+    
+    return (
+      <GestureDetector gesture={panGesture}>
+        <StyledAnimatedView
+          key={todo.id}
+          style={animatedStyle}
+          className={`flex-row items-center py-2 px-4 border-b border-gray-100 ${isBeingDragged ? 'bg-gray-100' : 'bg-white'}`}
+        >
+          <StyledTouchableOpacity
+            className="mr-3"
+            onPress={() => handleToggleTodo(todo.id)}
+          >
+            <StyledView className={`w-5 h-5 rounded-sm border ${todo.completed ? 'bg-blue-500 border-blue-500' : 'border-blue-500'} flex items-center justify-center`}>
+              {todo.completed && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
+            </StyledView>
+          </StyledTouchableOpacity>
+          
+          <StyledText 
+            className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}
+          >
+            {todo.text}
+          </StyledText>
+          
+          <StyledTouchableOpacity
+            className="p-2 mr-1"
+            onPress={() => handleDeleteTodo(todo.id)}
+          >
+            <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+          </StyledTouchableOpacity>
+          
+          {/* 드래그 핸들 */}
+          <StyledView className="p-1">
+            <Ionicons name="reorder-three" size={20} color="#999" />
+          </StyledView>
+        </StyledAnimatedView>
+      </GestureDetector>
+    );
+  }, [handleToggleTodo, handleDeleteTodo, draggedTodo, translateX, translateY, scale, zIndex, opacity]);
+
+  // 드롭 영역 렌더링 (카테고리 섹션 사이)
+  const renderDropZone = useCallback((categoryId: number, index: number) => {
+    const isActive = dropTargetCategory === categoryId && dropTargetIndex === index;
+    
+    return (
+      <StyledView 
+        className={`h-2 w-full ${isActive ? 'bg-blue-200' : 'bg-transparent'}`}
+        onLayout={() => {
+          if (isDragging) {
+            handleDropTarget(categoryId, index);
+          }
+        }}
+      />
+    );
+  }, [isDragging, dropTargetCategory, dropTargetIndex]);
+
+  // 카테고리 섹션 렌더링
+  const renderCategorySection = useCallback((category: TodoCategory) => {
+    const todosInCategory = groupedTodos()[category.id] || [];
+    const isSelected = selectedCategoryId === category.id;
+    const isAddingToThisCategory = addingTodoForCategoryId === category.id;
+    
+    return (
+      <StyledView key={category.id} className="mb-4">
+        {/* 카테고리 헤더 */}
+        <StyledTouchableOpacity
+          className={`flex-row justify-between items-center py-2 px-4 rounded-t-lg ${isSelected ? 'bg-blue-50' : 'bg-white'}`}
+          onPress={() => handleCategoryToggle(category.id)}
+          onLongPress={(e) => category.id !== 1 && handleOpenCategoryMenu(category.id, e)}
+        >
+          <StyledView className="flex-row items-center">
+            <StyledText className="text-base font-medium text-gray-800">
+              {category.title}
+            </StyledText>
+            <StyledText className="ml-2 text-xs text-gray-500">
+              ({todosInCategory.length})
+            </StyledText>
+          </StyledView>
+          
+          <StyledView className="flex-row items-center">
+            {/* 카테고리에 할일 추가 버튼 */}
+            <StyledTouchableOpacity
+              className="p-1 mr-1"
+              onPress={() => handleStartAddTodoToCategory(category.id)}
+              disabled={isAddingCategory || addingTodoForCategoryId !== null}
+            >
+              <Ionicons 
+                name="add-circle-outline" 
+                size={18} 
+                color={(isAddingCategory || addingTodoForCategoryId !== null) ? "#CCCCCC" : "#3B82F6"} 
+              />
+            </StyledTouchableOpacity>
+            
+            {/* 카테고리 확장/축소 아이콘 */}
+            <Ionicons 
+              name={isSelected ? "chevron-up" : "chevron-down"} 
+              size={18} 
+              color="#666666" 
+            />
+          </StyledView>
+        </StyledTouchableOpacity>
+        
+        {/* 카테고리 내용 (할일 목록) */}
+        {isSelected && (
+          <StyledView className="rounded-b-lg overflow-hidden">
+            {/* 드롭 영역 (맨 위) */}
+            {isDragging && renderDropZone(category.id, 0)}
+            
+            {/* 할일 목록 */}
+            {todosInCategory.map((todo, index) => (
+              <React.Fragment key={todo.id}>
+                {renderTodoItem(todo, index, category.id, todosInCategory.length)}
+                {/* 각 할일 아래에 드롭 영역 */}
+                {isDragging && renderDropZone(category.id, index + 1)}
+              </React.Fragment>
+            ))}
+            
+            {/* 새 할일 입력 필드 */}
+            {isAddingToThisCategory && (
+              <StyledView className="flex-row items-center p-3 bg-white border-t border-gray-100">
+                <StyledTextInput
+                  ref={newTodoInputRef}
+                  className="flex-1 px-3 py-2 bg-gray-100 rounded-lg"
+                  placeholder="새 할일 입력..."
+                  value={newTodo}
+                  onChangeText={setNewTodo}
+                  onSubmitEditing={handleAddTodoSubmit}
+                  returnKeyType="done"
+                  autoFocus={true}
+                />
+                <StyledTouchableOpacity 
+                  className="ml-2 p-2"
+                  onPress={handleAddTodoSubmit}
+                >
+                  <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                </StyledTouchableOpacity>
+                <StyledTouchableOpacity 
+                  className="ml-1 p-2"
+                  onPress={handleCancelAddTodo}
+                >
+                  <Ionicons name="close" size={20} color="#F44336" />
+                </StyledTouchableOpacity>
+              </StyledView>
+            )}
+          </StyledView>
+        )}
+      </StyledView>
+    );
+  }, [groupedTodos, selectedCategoryId, renderTodoItem, handleCategoryToggle, addingTodoForCategoryId, isAddingCategory, newTodo, isDragging, renderDropZone]);
+
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <StyledView className="flex-1">
+        {/* 할일 목록 */}
+        <StyledView className="flex-1">
+          {todos.length === 0 && !addingTodoForCategoryId && !isAddingCategory ? (
+            <StyledView className="justify-center items-center py-10 bg-white rounded-lg">
+              <Ionicons name="checkmark-done-circle-outline" size={50} color="#CCCCCC" />
+              <StyledText className="mt-2 text-gray-400">할 일이 없습니다</StyledText>
+            </StyledView>
+          ) : (
+            <StyledScrollView 
+              showsVerticalScrollIndicator={false} 
+              className="mb-16"
+              scrollEnabled={!isDragging}
+            >
+              {categories.map(renderCategorySection)}
+              
+              {/* 새 카테고리 입력 필드 (할일 목록 내에 표시) */}
+              {isAddingCategory && (
+                <StyledView className="flex-row items-center mb-4 bg-white rounded-lg p-3 shadow-sm">
+                  <StyledTextInput
+                    ref={newCategoryInputRef}
+                    className="flex-1 px-3 py-2 bg-gray-100 rounded-lg"
+                    placeholder="새 카테고리 이름 입력..."
+                    value={newCategoryTitle}
+                    onChangeText={setNewCategoryTitle}
+                    onSubmitEditing={handleAddCategory}
+                    returnKeyType="done"
+                    autoFocus={true}
+                  />
+                  <StyledTouchableOpacity 
+                    className="ml-2 p-2"
+                    onPress={handleAddCategory}
+                  >
+                    <Ionicons name="checkmark" size={20} color="#4CAF50" />
+                  </StyledTouchableOpacity>
+                  <StyledTouchableOpacity 
+                    className="ml-1 p-2"
+                    onPress={handleCancelAddCategory}
+                  >
+                    <Ionicons name="close" size={20} color="#F44336" />
+                  </StyledTouchableOpacity>
+                </StyledView>
+              )}
+            </StyledScrollView>
+          )}
+        </StyledView>
+        
+        {/* 하단 버튼 영역 */}
+        <StyledView className="absolute left-0 right-0 bottom-0 bg-white border-t border-gray-200 px-4 py-3">
+          <StyledView className="flex-row justify-between items-center">
+            {/* 새 카테고리 추가 버튼 */}
+            <StyledTouchableOpacity
+              className="flex-row items-center"
+              onPress={handleStartAddCategory}
+              disabled={isAddingCategory || addingTodoForCategoryId !== null}
+            >
+              <Ionicons 
+                name="add-circle-outline" 
+                size={20} 
+                color={(isAddingCategory || addingTodoForCategoryId !== null) ? "#CCCCCC" : "#666"} 
+              />
+              <StyledText 
+                className={`ml-2 ${(isAddingCategory || addingTodoForCategoryId !== null) ? "text-gray-400" : "text-gray-600"}`}
+              >
+                새 카테고리
+              </StyledText>
+            </StyledTouchableOpacity>
+            
+            {/* 새 할일 추가 버튼 (하단에 유지) */}
+            <StyledTouchableOpacity
+              className="flex-row items-center"
+              onPress={() => {
+                // 선택된 카테고리가 있으면 해당 카테고리에 할일 추가, 없으면 기본 카테고리에 추가
+                const targetCategoryId = selectedCategoryId || 1;
+                handleStartAddTodoToCategory(targetCategoryId);
+              }}
+              disabled={isAddingCategory || addingTodoForCategoryId !== null}
+            >
+              <Ionicons 
+                name="add" 
+                size={20} 
+                color={(isAddingCategory || addingTodoForCategoryId !== null) ? "#CCCCCC" : "#3B82F6"} 
+              />
+              <StyledText 
+                className={`ml-2 ${(isAddingCategory || addingTodoForCategoryId !== null) ? "text-gray-400" : "text-blue-500"}`}
+              >
+                새 할일
+              </StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
+        </StyledView>
+        
+        {/* 카테고리 메뉴 */}
+        {menuVisible && selectedMenuCategoryId && (
+          <StyledView 
+            className="absolute bg-white rounded-lg shadow-lg p-2 z-50"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+          >
+            <StyledTouchableOpacity
+              className="flex-row items-center p-2"
+              onPress={handleDeleteCategory}
+            >
+              <Ionicons name="trash-outline" size={18} color="#FF3B30" />
+              <StyledText className="ml-2 text-red-500">카테고리 삭제</StyledText>
+            </StyledTouchableOpacity>
+            
+            <StyledTouchableOpacity
+              className="flex-row items-center p-2"
+              onPress={handleCloseMenu}
+            >
+              <Ionicons name="close-outline" size={18} color="#666" />
+              <StyledText className="ml-2 text-gray-600">닫기</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
+        )}
+      </StyledView>
+    </GestureHandlerRootView>
+  );
+} 

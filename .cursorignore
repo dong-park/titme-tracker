@@ -1,0 +1,17 @@
+# 의존성 디렉토리
+node_modules/
+.expo/
+
+# 빌드 및 캐시 디렉토리
+.git/
+.idea/
+
+# 대용량 락 파일
+yarn.lock
+package-lock.json
+
+# OS 관련 파일
+.DS_Store
+
+# 기타 대용량 파일 또는 불필요한 파일
+assets/ 
