@@ -108,10 +108,10 @@ export function TodoList({ activityId }: TodoListProps) {
   // 카테고리 선택/해제 토글
   const handleCategoryToggle = (categoryId: number) => {
     if (selectedCategoryId === categoryId) {
-      // 이미 선택된 카테고리를 다시 누르면 선택 해제 (기본 카테고리로 설정)
+      // 이미 선택된 카테고리를 다시 누르면 선택 해제
       setSelectedCategoryId(null);
     } else {
-      // 다른 카테고리 선택
+      // 다른 카테고리 선택 (이제 이 선택은 필터링에 영향을 주지 않고, 시각적 강조만 변경합니다)
       setSelectedCategoryId(categoryId);
     }
   };
@@ -340,21 +340,14 @@ export function TodoList({ activityId }: TodoListProps) {
 
   // 카테고리별 할일 목록 필터링
   const filteredTodos = useMemo(() => {
-    if (selectedCategoryId === null) {
-      // 모든 할일 표시
-      return todos;
-    } else {
-      // 선택된 카테고리의 할일만 표시
-      return todos.filter((todo) => todo.categoryId === selectedCategoryId);
-    }
-  }, [todos, selectedCategoryId]);
+    // 카테고리 선택과 관계없이 항상 모든 할일 표시
+    return todos;
+  }, [todos]);
 
   // 통합 데이터 구조 생성
   const integratedData = useMemo(() => {
-    // 필터링된 카테고리 (선택된 카테고리가 있으면 해당 카테고리만, 없으면 모든 카테고리)
-    const filteredCategories = selectedCategoryId 
-      ? categories.filter((cat: TodoCategoryType) => cat.id === selectedCategoryId)
-      : categories;
+    // 카테고리 선택과 관계없이 항상 모든 카테고리 표시
+    const filteredCategories = categories;
     
     // 카테고리만 포함한 배열 생성 (할일 제외)
     const result: IntegratedItem[] = [];
@@ -373,7 +366,7 @@ export function TodoList({ activityId }: TodoListProps) {
     });
     
     return result;
-  }, [categories, selectedCategoryId]);
+  }, [categories]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

@@ -12,25 +12,26 @@ const TodoItem = React.memo(({
   drag,
   isActive,
   onLongPress,
-  onDragStart
+  onDragStart,
+  isHighlighted
 }: TodoItemProps) => {
   return (
     <ScaleDecorator>
       <OpacityDecorator activeOpacity={0.7}>
         <StyledView
-          className={`flex-row items-center py-2 px-4 border-b border-gray-100 ${isActive ? 'bg-gray-100' : 'bg-white'}`}
+          className={`flex-row items-center py-2 px-4 border-b border-gray-100 ${isActive ? 'bg-gray-100' : 'bg-white'} ${isHighlighted ? 'bg-blue-50' : ''}`}
         >
           <StyledTouchableOpacity
             className="mr-3"
             onPress={() => onToggle(todo.id)}
           >
-            <StyledView className={`w-5 h-5 rounded-sm border ${todo.completed ? 'bg-blue-500 border-blue-500' : 'border-blue-500'} flex items-center justify-center`}>
+            <StyledView className={`w-5 h-5 rounded-sm border ${todo.completed ? 'bg-blue-500 border-blue-500' : isHighlighted ? 'border-blue-600' : 'border-blue-500'} flex items-center justify-center`}>
               {todo.completed && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
             </StyledView>
           </StyledTouchableOpacity>
           
           <StyledText 
-            className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-400' : 'text-gray-800'}`}
+            className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-400' : isHighlighted ? 'text-blue-800 font-medium' : 'text-gray-800'}`}
           >
             {todo.text}
           </StyledText>

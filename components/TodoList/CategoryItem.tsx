@@ -110,10 +110,10 @@ const CategoryItem = React.memo(({
     <ScaleDecorator>
       <OpacityDecorator activeOpacity={0.7}>
         <StyledView 
-          className={`mb-4 rounded-lg border ${isDropTarget ? 'border-blue-500 border-2' : 'border-gray-200'} ${isActive ? 'bg-gray-50' : 'bg-white'}`}
+          className={`mb-4 rounded-lg border ${isDropTarget ? 'border-blue-500 border-2' : isSelected ? 'border-blue-400 border-2' : 'border-gray-200'} ${isActive ? 'bg-gray-50' : isSelected ? 'bg-blue-50' : 'bg-white'}`}
           onLayout={onLayout}
         >
-          <StyledView className="flex-row justify-between items-center p-3 bg-white rounded-t-lg">
+          <StyledView className={`flex-row justify-between items-center p-3 ${isSelected ? 'bg-blue-50' : 'bg-white'} rounded-t-lg`}>
             <StyledTouchableOpacity
               className="flex-1 flex-row items-center"
               onPress={handleCategoryClick}
@@ -123,14 +123,14 @@ const CategoryItem = React.memo(({
                 }
               }}
             >
-              <StyledText className={`font-bold text-base ${isSelected ? 'text-blue-500' : ''}`}>
+              <StyledText className={`font-bold text-base ${isSelected ? 'text-blue-600' : ''}`}>
                 {category.title}
               </StyledText>
               {/* 접기/펴기 상태 아이콘 추가 */}
               <Ionicons 
                 name={isExpanded ? "chevron-up" : "chevron-down"} 
                 size={16} 
-                color="#999"
+                color={isSelected ? "#4285F4" : "#999"}
                 style={{ marginLeft: 4 }}
               />
             </StyledTouchableOpacity>
@@ -213,6 +213,7 @@ const CategoryItem = React.memo(({
                       isActive={isActive}
                       onLongPress={() => onTodoLongPress && onTodoLongPress(item.id, category.id)}
                       onDragStart={() => handleTodoDragStart && handleTodoDragStart(item.id, category.id)}
+                      isHighlighted={isSelected}
                     />
                   )}
                 />

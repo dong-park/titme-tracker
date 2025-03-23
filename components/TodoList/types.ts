@@ -15,6 +15,7 @@ export interface TodoItemProps {
   isActive?: boolean;
   onLongPress?: () => void;
   onDragStart?: () => void;
+  isHighlighted?: boolean;
 }
 
 // 카테고리 컴포넌트 Props 인터페이스
