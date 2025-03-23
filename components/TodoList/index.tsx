@@ -344,252 +344,280 @@ export function TodoList({ activityId }: TodoListProps) {
     return todos;
   }, [todos]);
 
-  // 통합 데이터 구조 생성
-  const integratedData = useMemo(() => {
-    // 카테고리 선택과 관계없이 항상 모든 카테고리 표시
-    const filteredCategories = categories;
+  // 통합 데이터 생성 - 카테고리와 할일을 하나의 배열로 합치기
+  const integratedItems: IntegratedItem[] = useMemo(() => {
+    const items: IntegratedItem[] = [];
     
-    // 카테고리만 포함한 배열 생성 (할일 제외)
-    const result: IntegratedItem[] = [];
-    
-    filteredCategories.forEach((category: TodoCategoryType) => {
-      // 카테고리만 추가
-      result.push({
+    // 카테고리 추가
+    categories.forEach((category: TodoCategoryType) => {
+      items.push({
         id: `category-${category.id}`,
         type: 'category',
         data: category,
         categoryId: category.id
       });
       
-      // 할일은 더 이상 통합 데이터에 추가하지 않음
-      // 이제 CategoryItem에서만 할일을 표시함
+      // 해당 카테고리의 할일 목록 추가
+      const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
+      categoryTodos.forEach(todo => {
+        items.push({
+          id: `todo-${todo.id}`,
+          type: 'todo',
+          data: todo,
+          categoryId: category.id,
+          parentId: `category-${category.id}`
+        });
+      });
     });
     
-    return result;
-  }, [categories]);
+    return items;
+  }, [categories, todos]);
+  
+  // 통합 아이템 드래그 앤 드롭 핸들러
+  const handleIntegratedDragEnd = ({ data }: { data: IntegratedItem[] }) => {
+    // 카테고리 순서 업데이트
+    const categoryOrder = data
+      .filter(item => item.type === 'category')
+      .map(item => (item.data as TodoCategoryType).id);
+    
+    // 카테고리 간 이동이 발생했는지 확인하고 처리
+    // 각 할일 아이템 앞에 있는 카테고리를 확인하여 소속 결정
+    let currentCategoryId: number | null = null;
+    const todoMoves: {todoId: string, targetCategoryId: number}[] = [];
+    
+    // 할일 아이템별 소속 카테고리 및 순서 처리
+    const todoOrderByCategory: Record<number, string[]> = {};
+    
+    // 모든 아이템을 순회하며 처리
+    data.forEach(item => {
+      if (item.type === 'category') {
+        // 카테고리 아이템을 만나면 현재 카테고리 ID 갱신
+        currentCategoryId = (item.data as TodoCategoryType).id;
+      } else if (item.type === 'todo' && currentCategoryId !== null) {
+        const todo = item.data as TodoItemType;
+        
+        // 현재 카테고리 ID로 순서 배열 초기화 (없을 경우)
+        if (!todoOrderByCategory[currentCategoryId]) {
+          todoOrderByCategory[currentCategoryId] = [];
+        }
+        
+        // 현재 카테고리에 할일 ID 추가
+        todoOrderByCategory[currentCategoryId].push(todo.id);
+        
+        // 카테고리가 변경되었는지 확인
+        if (todo.categoryId !== currentCategoryId) {
+          // 카테고리 변경 필요
+          todoMoves.push({
+            todoId: todo.id,
+            targetCategoryId: currentCategoryId
+          });
+        }
+      }
+    });
+    
+    // 카테고리 순서 변경 디스패치
+    dispatch(reorderCategories({
+      activityId,
+      newOrder: categoryOrder
+    }));
+    
+    // 카테고리 간 이동이 있는 할일들 처리
+    todoMoves.forEach(({todoId, targetCategoryId}) => {
+      dispatch(moveTodoToCategory({
+        activityId,
+        todoId,
+        targetCategoryId
+      }));
+    });
+    
+    // 각 카테고리별 할일 순서 변경 디스패치
+    Object.entries(todoOrderByCategory).forEach(([categoryIdStr, order]) => {
+      const categoryId = parseInt(categoryIdStr);
+      
+      // 해당 카테고리에 할일이 있을 경우에만 순서 변경 수행
+      if (order.length > 0) {
+        dispatch(reorderTodos({
+          activityId,
+          categoryId,
+          newOrder: order
+        }));
+      }
+    });
+  };
+  
+  // 아이템 유형에 따른 렌더링
+  const renderIntegratedItem = ({ item, drag, isActive }: { 
+    item: IntegratedItem; 
+    drag: () => void; 
+    isActive: boolean 
+  }) => {
+    if (item.type === 'category') {
+      const category = item.data as TodoCategoryType;
+      return (
+        <StyledView className="z-10">
+          <CategoryItem
+            category={category}
+            todos={todos}
+            isSelected={selectedCategoryId === category.id}
+            onToggle={handleCategoryToggle}
+            onAddTodo={handleStartAddTodoToCategory}
+            onLongPress={handleOpenCategoryMenu}
+            onTodoToggle={handleToggleTodo}
+            onTodoDelete={handleDeleteTodo}
+            onTodoDragEnd={handleTodoDragEnd}
+            onTodoLongPress={handleOpenTodoMoveMenu}
+            isAddingTodo={addingTodoForCategoryId === category.id}
+            newTodoText={newTodo}
+            onNewTodoChange={setNewTodo}
+            onNewTodoSubmit={handleAddTodoSubmit}
+            onNewTodoCancel={handleCancelAddTodo}
+            newTodoInputRef={newTodoInputRef}
+            drag={drag}
+            isActive={isActive}
+            onTodoDrop={handleTodoDrop}
+            onLayout={(event) => handleCategoryLayout(category.id, event)}
+            isDropTarget={dropTargetCategoryId === category.id}
+            handleTodoDragStart={handleTodoDragStart}
+            integratedMode={true}
+          />
+        </StyledView>
+      );
+    } else {
+      const todo = item.data as TodoItemType;
+      return (
+        <StyledView className="pl-6 ml-2 border-l-2 border-gray-200">
+          <TodoItem
+            todo={todo}
+            onToggle={handleToggleTodo}
+            onDelete={handleDeleteTodo}
+            drag={drag}
+            isActive={isActive}
+            onLongPress={() => handleOpenTodoMoveMenu(todo.id, todo.categoryId)}
+            onDragStart={() => handleTodoDragStart(todo.id, todo.categoryId)}
+            isHighlighted={selectedCategoryId === todo.categoryId}
+            parentCategoryId={todo.categoryId}
+          />
+        </StyledView>
+      );
+    }
+  };
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <StyledView className="flex-1">
-        {/* 할일 목록 */}
-        <StyledView className="flex-1">
-          {todos.length === 0 && !addingTodoForCategoryId && !isAddingCategory ? (
-            <StyledView className="justify-center items-center py-10 bg-white rounded-lg">
-              <Ionicons name="checkmark-done-circle-outline" size={50} color="#CCCCCC" />
-              <StyledText className="mt-2 text-gray-400">할 일이 없습니다</StyledText>
-            </StyledView>
-          ) : (
-            <DraggableFlatList
-              data={integratedData}
-              keyExtractor={(item) => item.id}
-              onDragEnd={({ data }) => {
-                // 드래그 앤 드롭 처리
-                // 카테고리 순서 변경 또는 할일 순서 변경 처리
-                
-                // 카테고리 순서 추출
-                const categoryItems = data.filter(item => item.type === 'category');
-                const newCategoryOrder = categoryItems.map(item => (item.data as TodoCategoryType).id);
-                
-                if (newCategoryOrder.length === categories.length) {
-                  dispatch(reorderCategories({
-                    activityId,
-                    newOrder: newCategoryOrder
-                  }));
-                }
-                
-                // 각 카테고리별 할일 순서 추출 및 적용
-                const todosByCategory: Record<number, string[]> = {};
-                
-                data.forEach(item => {
-                  if (item.type === 'todo' && item.categoryId) {
-                    if (!todosByCategory[item.categoryId]) {
-                      todosByCategory[item.categoryId] = [];
-                    }
-                    todosByCategory[item.categoryId].push((item.data as TodoItemType).id);
-                  }
-                });
-                
-                // 각 카테고리별로 할일 순서 업데이트
-                Object.entries(todosByCategory).forEach(([categoryId, todoIds]) => {
-                  const categoryTodos = todos.filter(todo => todo.categoryId === parseInt(categoryId));
-                  if (todoIds.length === categoryTodos.length) {
-                    dispatch(reorderTodos({
-                      activityId,
-                      categoryId: parseInt(categoryId),
-                      newOrder: todoIds
-                    }));
-                  }
-                });
-              }}
-              renderItem={({ item, drag, isActive }) => {
-                // 이제 모든 항목이 카테고리 타입입니다.
-                const category = item.data as TodoCategoryType;
-                const categoryId = category.id;
-                const categoryTodos = todos.filter(todo => todo.categoryId === categoryId);
-                
-                return (
-                  <CategoryItem
-                    category={category}
-                    todos={todos}
-                    isSelected={selectedCategoryId === categoryId}
-                    onToggle={handleCategoryToggle}
-                    onAddTodo={handleStartAddTodoToCategory}
-                    onLongPress={handleOpenCategoryMenu}
-                    onTodoToggle={handleToggleTodo}
-                    onTodoDelete={handleDeleteTodo}
-                    onTodoDragEnd={handleTodoDragEnd}
-                    onTodoLongPress={handleOpenTodoMoveMenu}
-                    isAddingTodo={addingTodoForCategoryId === categoryId}
-                    newTodoText={newTodo}
-                    onNewTodoChange={setNewTodo}
-                    onNewTodoSubmit={handleAddTodoSubmit}
-                    onNewTodoCancel={handleCancelAddTodo}
-                    newTodoInputRef={newTodoInputRef}
-                    drag={drag}
-                    isActive={isActive}
-                    onTodoDrop={handleTodoDrop}
-                    onLayout={(event) => handleCategoryLayout(categoryId, event)}
-                    isDropTarget={dropTargetCategoryId === categoryId}
-                    handleTodoDragStart={handleTodoDragStart}
-                  />
-                );
-              }}
-              contentContainerStyle={{ paddingBottom: 80 }}
-              ListFooterComponent={() => (
-                isAddingCategory ? (
-                  <StyledView className="flex-row items-center mb-4 bg-white rounded-lg p-3 shadow-sm">
-                    <StyledTextInput
-                      ref={newCategoryInputRef}
-                      className="flex-1 px-3 py-2 bg-gray-100 rounded-lg"
-                      placeholder="새 카테고리 이름 입력..."
-                      value={newCategoryTitle}
-                      onChangeText={setNewCategoryTitle}
-                      onSubmitEditing={handleAddCategory}
-                      returnKeyType="done"
-                      autoFocus={true}
-                    />
-                    <StyledTouchableOpacity 
-                      className="ml-2 p-2"
-                      onPress={handleAddCategory}
-                    >
-                      <Ionicons name="checkmark" size={20} color="#4CAF50" />
-                    </StyledTouchableOpacity>
-                    <StyledTouchableOpacity 
-                      className="ml-1 p-2"
-                      onPress={handleCancelAddCategory}
-                    >
-                      <Ionicons name="close" size={20} color="#F44336" />
-                    </StyledTouchableOpacity>
-                  </StyledView>
-                ) : null
-              )}
-            />
-          )}
+      <StyledView className="flex-1 p-4">
+        {/* 상단 헤더 */}
+        <StyledView className="mb-4 flex-row justify-between items-center">
+          <StyledView>
+            <StyledText className="text-2xl font-bold text-gray-800">할 일 목록</StyledText>
+          </StyledView>
+          
+          <StyledTouchableOpacity 
+            className="bg-blue-500 py-2 px-4 rounded-lg" 
+            onPress={handleStartAddCategory}
+          >
+            <StyledText className="text-white font-semibold">카테고리 추가</StyledText>
+          </StyledTouchableOpacity>
         </StyledView>
         
-        {/* 하단 버튼 영역 */}
-        <StyledView className="absolute left-0 right-0 bottom-0 bg-white border-t border-gray-200 px-4 py-3">
-          <StyledView className="flex-row justify-between items-center">
-            {/* 새 카테고리 추가 버튼 */}
-            <StyledTouchableOpacity
-              className="flex-row items-center"
-              onPress={handleStartAddCategory}
-              disabled={isAddingCategory || addingTodoForCategoryId !== null}
+        {/* 카테고리 추가 입력 영역 */}
+        {isAddingCategory && (
+          <StyledView className="mb-4 flex-row border border-gray-300 rounded-lg overflow-hidden">
+            <StyledTextInput
+              ref={newCategoryInputRef}
+              className="flex-1 px-4 py-2 text-base"
+              placeholder="새 카테고리 이름..."
+              value={newCategoryTitle}
+              onChangeText={setNewCategoryTitle}
+              onSubmitEditing={handleAddCategory}
+            />
+            <StyledTouchableOpacity 
+              className="px-3 flex justify-center items-center bg-gray-200" 
+              onPress={handleCancelAddCategory}
             >
-              <Ionicons 
-                name="add-circle-outline" 
-                size={20} 
-                color={(isAddingCategory || addingTodoForCategoryId !== null) ? "#CCCCCC" : "#666"} 
-              />
-              <StyledText 
-                className={`ml-2 ${(isAddingCategory || addingTodoForCategoryId !== null) ? "text-gray-400" : "text-gray-600"}`}
-              >
-                새 카테고리
-              </StyledText>
+              <Ionicons name="close" size={24} color="#666" />
             </StyledTouchableOpacity>
-            
-            {/* 새 할일 추가 버튼 (하단에 유지) */}
-            <StyledTouchableOpacity
-              className="flex-row items-center"
-              onPress={() => {
-                // 선택된 카테고리가 있으면 해당 카테고리에 할일 추가, 없으면 기본 카테고리에 추가
-                const targetCategoryId = selectedCategoryId || 1;
-                handleStartAddTodoToCategory(targetCategoryId);
-              }}
-              disabled={isAddingCategory || addingTodoForCategoryId !== null}
+            <StyledTouchableOpacity 
+              className="px-3 flex justify-center items-center bg-blue-500" 
+              onPress={handleAddCategory}
             >
-              <Ionicons 
-                name="add" 
-                size={20} 
-                color={(isAddingCategory || addingTodoForCategoryId !== null) ? "#CCCCCC" : "#3B82F6"} 
-              />
-              <StyledText 
-                className={`ml-2 ${(isAddingCategory || addingTodoForCategoryId !== null) ? "text-gray-400" : "text-blue-500"}`}
-              >
-                새 할일
-              </StyledText>
+              <Ionicons name="checkmark" size={24} color="#FFF" />
             </StyledTouchableOpacity>
           </StyledView>
-        </StyledView>
-        
-        {/* 카테고리 메뉴 */}
-        {menuVisible && (
-          <StyledTouchableOpacity
-            className="absolute top-0 left-0 right-0 bottom-0 bg-transparent"
-            onPress={handleCloseMenu}
-          >
-            <StyledView
-              className="absolute bg-white rounded-lg shadow-lg p-2"
-              style={{ top: menuPosition.top, left: menuPosition.left }}
-            >
-              <StyledTouchableOpacity
-                className="flex-row items-center p-2"
-                onPress={handleDeleteCategory}
-              >
-                <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-                <StyledText className="ml-2 text-red-500">카테고리 삭제</StyledText>
-              </StyledTouchableOpacity>
-            </StyledView>
-          </StyledTouchableOpacity>
         )}
+        
+        {/* 통합 드래그 가능 목록 */}
+        <DraggableFlatList
+          data={integratedItems}
+          keyExtractor={(item) => item.id}
+          onDragEnd={handleIntegratedDragEnd}
+          renderItem={renderIntegratedItem}
+          activationDistance={10}
+          containerStyle={{ flex: 1 }}
+          dragItemOverflow={true}
+          dragHitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        />
+        
+        {/* 카테고리 컨텍스트 메뉴 */}
+        {/* {menuVisible && (
+          <StyledView 
+            className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2"
+            style={{ top: menuPosition.top, left: menuPosition.left }}
+          >
+            <StyledTouchableOpacity 
+              className="flex-row items-center p-3"
+              onPress={handleDeleteCategory}
+            >
+              <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+              <StyledText className="ml-2 text-red-500">삭제</StyledText>
+            </StyledTouchableOpacity>
+            
+            <StyledTouchableOpacity 
+              className="flex-row items-center p-3 mt-1"
+              onPress={handleCloseMenu}
+            >
+              <Ionicons name="close-outline" size={20} color="#666" />
+              <StyledText className="ml-2 text-gray-700">닫기</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
+        )} */}
         
         {/* 할일 이동 메뉴 */}
-        {todoMoveMenuVisible && (
-          <StyledTouchableOpacity
-            className="absolute top-0 left-0 right-0 bottom-0 bg-black bg-opacity-50 items-center justify-center"
-            onPress={handleCloseTodoMoveMenu}
+        {/* {todoMoveMenuVisible && (
+          <StyledView 
+            className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2"
+            style={{ 
+              top: todoMoveMenuPosition.top, 
+              left: todoMoveMenuPosition.left, 
+              width: 300
+            }}
           >
-            <StyledView
-              className="bg-white rounded-lg shadow-lg p-4 w-3/4 max-h-96"
+            <StyledText className="font-bold text-lg mb-2 p-2">할일 이동</StyledText>
+            
+            <StyledScrollView className="max-h-60">
+              {categories.map((category: TodoCategoryType) => (
+                <StyledTouchableOpacity 
+                  key={category.id}
+                  className={`p-3 border-b border-gray-100 ${movingTodoSourceCategoryId === category.id ? 'bg-gray-100' : ''}`}
+                  onPress={() => handleMoveTodoToCategory(category.id)}
+                  disabled={movingTodoSourceCategoryId === category.id}
+                >
+                  <StyledText className={movingTodoSourceCategoryId === category.id ? 'text-gray-400' : ''}>
+                    {category.title}
+                    {movingTodoSourceCategoryId === category.id ? ' (현재)' : ''}
+                  </StyledText>
+                </StyledTouchableOpacity>
+              ))}
+            </StyledScrollView>
+            
+            <StyledTouchableOpacity 
+              className="p-3 mt-2 flex-row items-center justify-center"
+              onPress={handleCloseTodoMoveMenu}
             >
-              <StyledText className="text-lg font-bold mb-4 text-center">할일 이동</StyledText>
-              <StyledScrollView>
-                {categories.map((category: TodoCategoryType) => (
-                  <StyledTouchableOpacity
-                    key={category.id}
-                    className={`p-3 border-b border-gray-100 ${
-                      movingTodoSourceCategoryId === category.id ? 'bg-gray-100' : ''
-                    }`}
-                    onPress={() => handleMoveTodoToCategory(category.id)}
-                    disabled={movingTodoSourceCategoryId === category.id}
-                  >
-                    <StyledText className={`${
-                      movingTodoSourceCategoryId === category.id ? 'text-gray-400' : 'text-gray-800'
-                    }`}>
-                      {category.title} {movingTodoSourceCategoryId === category.id ? '(현재)' : ''}
-                    </StyledText>
-                  </StyledTouchableOpacity>
-                ))}
-              </StyledScrollView>
-              <StyledTouchableOpacity
-                className="mt-4 p-3 bg-gray-200 rounded-lg items-center"
-                onPress={handleCloseTodoMoveMenu}
-              >
-                <StyledText className="font-medium">취소</StyledText>
-              </StyledTouchableOpacity>
-            </StyledView>
-          </StyledTouchableOpacity>
-        )}
+              <Ionicons name="close-outline" size={20} color="#666" />
+              <StyledText className="ml-2">닫기</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
+        )} */}
       </StyledView>
     </GestureHandlerRootView>
   );

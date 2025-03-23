@@ -13,13 +13,27 @@ const TodoItem = React.memo(({
   isActive,
   onLongPress,
   onDragStart,
-  isHighlighted
+  isHighlighted,
+  parentCategoryId
 }: TodoItemProps) => {
+  // 상위 카테고리 ID가 전달되면 사용하고, 없으면 todo의 categoryId 사용
+  const categoryId = parentCategoryId || todo.categoryId;
+  
   return (
-    <ScaleDecorator>
-      <OpacityDecorator activeOpacity={0.7}>
+    <ScaleDecorator activeScale={0.95}>
+      <OpacityDecorator activeOpacity={0.8}>
         <StyledView
-          className={`flex-row items-center py-2 px-4 border-b border-gray-100 ${isActive ? 'bg-gray-100' : 'bg-white'} ${isHighlighted ? 'bg-blue-50' : ''}`}
+          className={`flex-row items-center py-2 px-4 border-b border-gray-100 
+            ${isActive ? 'bg-blue-100 shadow-md' : 'bg-white'} 
+            ${isHighlighted ? 'bg-blue-50' : ''}
+            ${todo.completed ? 'opacity-70' : ''}
+          `}
+          style={{
+            transform: [{ scale: isActive ? 1.02 : 1 }],
+            zIndex: isActive ? 1 : 0,
+            marginVertical: 1,
+            borderRadius: 6
+          }}
         >
           <StyledTouchableOpacity
             className="mr-3"
@@ -47,12 +61,16 @@ const TodoItem = React.memo(({
           <StyledTouchableOpacity 
             className="p-1" 
             onPressIn={() => {
-              if (drag) drag();
               if (onDragStart) onDragStart();
+              if (drag) {
+                // 약간의 지연을 줘서 onDragStart가 먼저 실행되도록
+                setTimeout(() => drag(), 10);
+              }
             }}
             onLongPress={onLongPress}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           >
-            <Ionicons name="reorder-three" size={20} color="#999" />
+            <Ionicons name="reorder-three" size={20} color={isActive ? "#4285F4" : "#999"} />
           </StyledTouchableOpacity>
         </StyledView>
       </OpacityDecorator>

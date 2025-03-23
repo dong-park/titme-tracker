@@ -34,7 +34,8 @@ const CategoryItem = React.memo(({
   onTodoDrop,
   onLayout,
   isDropTarget,
-  handleTodoDragStart
+  handleTodoDragStart,
+  integratedMode
 }: CategoryItemProps) => {
   const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -70,13 +71,16 @@ const CategoryItem = React.memo(({
     isDragging.current = true;
     savedExpandState.current = isExpanded;
     
-    LayoutAnimation.configureNext({
-      duration: 0,
-      create: { type: 'linear', property: 'opacity' },
-      update: { type: 'linear', property: 'opacity' },
-      delete: { type: 'linear', property: 'opacity' }
-    });
-    setIsExpanded(false);
+    // 통합 모드에서는 축소하지 않음
+    if (!integratedMode) {
+      LayoutAnimation.configureNext({
+        duration: 0,
+        create: { type: 'linear', property: 'opacity' },
+        update: { type: 'linear', property: 'opacity' },
+        delete: { type: 'linear', property: 'opacity' }
+      });
+      setIsExpanded(false);
+    }
     
     setTimeout(() => drag?.(), 50);
   };
@@ -115,6 +119,18 @@ const CategoryItem = React.memo(({
           onTouchEnd={() => onTodoDrop?.('', category.id)}
         >
           <StyledText className="text-gray-400">할일이 없습니다</StyledText>
+        </StyledView>
+      );
+    }
+    
+    // 통합 모드에서는 할일 목록을 표시하지 않음 (상위 컴포넌트에서 처리)
+    if (integratedMode) {
+      return (
+        <StyledView 
+          className="py-2 items-center"
+          onTouchEnd={() => onTodoDrop?.('', category.id)}
+        >
+          <StyledText className="text-xs text-gray-400">통합 모드에서는 할일이 별도로 표시됩니다</StyledText>
         </StyledView>
       );
     }
@@ -185,20 +201,28 @@ const CategoryItem = React.memo(({
       <OpacityDecorator activeOpacity={0.7}>
         <StyledView 
           className={`mb-4 rounded-lg border ${
-            isDropTarget ? 'border-blue-500 border-2' : 
+            isDropTarget ? 'border-blue-500 border-2 bg-blue-50 shadow-lg' : 
             isSelected ? 'border-blue-400 border-2' : 'border-gray-200'
           } ${
-            isActive ? 'bg-gray-50' : isSelected ? 'bg-blue-50' : 'bg-white'
+            isActive ? 'bg-gray-50 shadow-xl' : isSelected ? 'bg-blue-50' : 'bg-white'
           }`}
           onLayout={onLayout}
         >
           {renderCategoryHeader()}
           
-          {isExpanded && (
-            <StyledView className="bg-white rounded-b-lg overflow-hidden">
+          {(!integratedMode || isExpanded) && (
+            <StyledView className={`bg-white rounded-b-lg overflow-hidden ${isDropTarget ? 'bg-blue-50' : ''}`}>
               {renderAddTodoInput()}
               {renderTodoList()}
             </StyledView>
+          )}
+          
+          {/* 드롭 영역 표시 (통합 모드에서만) */}
+          {integratedMode && isDropTarget && (
+            <StyledView 
+              className="absolute inset-0 border-2 border-blue-500 rounded-lg bg-blue-100 opacity-20"
+              style={{ zIndex: -1 }}
+            />
           )}
         </StyledView>
       </OpacityDecorator>
