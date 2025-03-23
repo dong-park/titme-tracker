@@ -19,10 +19,18 @@ const TodoItem = React.memo(({
   // 상위 카테고리 ID가 전달되면 사용하고, 없으면 todo의 categoryId 사용
   const categoryId = parentCategoryId || todo.categoryId;
   
+  const handleDragStart = () => {
+    if (onDragStart) onDragStart();
+    if (drag) {
+      // 약간의 지연을 줘서 onDragStart가 먼저 실행되도록
+      setTimeout(() => drag(), 10);
+    }
+  };
+  
   return (
     <ScaleDecorator activeScale={0.95}>
       <OpacityDecorator activeOpacity={0.8}>
-        <StyledView
+        <StyledTouchableOpacity
           className={`flex-row items-center py-2 px-4 mb-1 
             ${isActive ? 'bg-blue-100 shadow-md' : 'bg-white'} 
             ${isHighlighted ? 'bg-blue-50' : ''}
@@ -36,6 +44,8 @@ const TodoItem = React.memo(({
             borderWidth: 1,
             borderColor: isHighlighted ? '#93c5fd' : '#f3f4f6'
           }}
+          onLongPress={handleDragStart}
+          delayLongPress={150}
         >
           <StyledTouchableOpacity
             className="mr-3"
@@ -66,28 +76,12 @@ const TodoItem = React.memo(({
           </StyledText>
           
           <StyledTouchableOpacity
-            className="p-2 mr-1"
+            className="p-2"
             onPress={() => onDelete(todo.id)}
           >
             <Ionicons name="trash-outline" size={18} color="#FF3B30" />
           </StyledTouchableOpacity>
-          
-          {/* 드래그 핸들 */}
-          <StyledTouchableOpacity 
-            className="p-1" 
-            onPressIn={() => {
-              if (onDragStart) onDragStart();
-              if (drag) {
-                // 약간의 지연을 줘서 onDragStart가 먼저 실행되도록
-                setTimeout(() => drag(), 10);
-              }
-            }}
-            onLongPress={onLongPress}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons name="reorder-three" size={20} color={isActive ? "#4285F4" : "#999"} />
-          </StyledTouchableOpacity>
-        </StyledView>
+        </StyledTouchableOpacity>
       </OpacityDecorator>
     </ScaleDecorator>
   );
