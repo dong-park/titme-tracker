@@ -22,8 +22,8 @@ const TodoItem = React.memo(({
   const handleDragStart = () => {
     if (onDragStart) onDragStart();
     if (drag) {
-      // 약간의 지연을 줘서 onDragStart가 먼저 실행되도록
-      setTimeout(() => drag(), 10);
+      // 지연 없이 즉시 드래그 시작
+      drag();
     }
   };
   

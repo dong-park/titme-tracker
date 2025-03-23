@@ -52,11 +52,10 @@ const CategoryItem = React.memo(({
       isDragging.current = false;
       
       if (savedExpandState.current) {
-        setTimeout(() => {
-          LayoutAnimation.configureNext(animationConfig);
-          setIsExpanded(true);
-          onExpandToggle?.(true);
-        }, 300);
+        // 지연 없이 바로 펼침 상태 복원
+        LayoutAnimation.configureNext(animationConfig);
+        setIsExpanded(true);
+        onExpandToggle?.(true);
       }
     }
   }, [isActive, onExpandToggle]);
@@ -97,8 +96,8 @@ const CategoryItem = React.memo(({
       onDragStart();
     }
     
-    // 드래그 시작 전 약간의 딜레이를 주어 애니메이션 효과가 보이도록 함
-    setTimeout(() => drag?.(), 20);
+    // 지연 없이 즉시 드래그 시작
+    drag?.();
   };
   
   // 할일 입력 UI
