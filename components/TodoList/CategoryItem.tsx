@@ -79,7 +79,16 @@ const CategoryItem = React.memo(({
     isDragging.current = true;
     savedExpandState.current = isExpanded;
     
-    LayoutAnimation.configureNext(animationConfig);
+    LayoutAnimation.configureNext({
+      ...animationConfig,
+      duration: 150,
+      update: {
+        type: 'easeInEaseOut',
+        property: 'scaleXY',
+        duration: 150
+      }
+    });
+    
     setIsExpanded(false);
     onExpandToggle?.(false);
     
@@ -88,7 +97,8 @@ const CategoryItem = React.memo(({
       onDragStart();
     }
     
-    setTimeout(() => drag?.(), 50);
+    // 드래그 시작 전 약간의 딜레이를 주어 애니메이션 효과가 보이도록 함
+    setTimeout(() => drag?.(), 20);
   };
   
   // 할일 입력 UI
@@ -161,11 +171,15 @@ const CategoryItem = React.memo(({
   }`;
 
   return (
-    <ScaleDecorator>
-      <OpacityDecorator activeOpacity={0.7}>
+    <ScaleDecorator activeScale={0.97}>
+      <OpacityDecorator activeOpacity={0.8}>
         <StyledView 
           className={containerClassName}
           onLayout={onLayout}
+          style={{
+            transform: [{ scale: isActive ? 1.02 : 1 }],
+            zIndex: isActive ? 10 : 1
+          }}
         >
           {renderCategoryHeader()}
           

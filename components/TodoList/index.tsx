@@ -15,7 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { createSelector } from '@reduxjs/toolkit';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Dimensions, TextInput } from 'react-native';
+import { Alert, Dimensions, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useDispatch, useSelector } from 'react-redux';
@@ -23,6 +23,14 @@ import CategoryItem from './CategoryItem';
 import { StyledScrollView, StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
 import TodoItem from './TodoItem';
 import { IntegratedItem, TodoListProps } from './types';
+
+// LayoutAnimation 설정 (안드로이드 대응)
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
+// 애니메이션 프리셋 설정
+const animationConfig = LayoutAnimation.Presets.easeInEaseOut;
 
 // 메모이제이션된 선택자 생성
 const selectTodosByActivityId = createSelector(
@@ -101,6 +109,9 @@ export function TodoList({ activityId }: TodoListProps) {
   
   // 카테고리 확장/축소 토글 함수
   const handleCategoryExpand = (categoryId: number, isExpanded: boolean) => {
+    // 애니메이션 적용
+    LayoutAnimation.configureNext(animationConfig);
+    
     setExpandedCategories(prev => ({
       ...prev,
       [categoryId]: isExpanded
@@ -298,6 +309,9 @@ export function TodoList({ activityId }: TodoListProps) {
 
   // 카테고리 드래그 시작 핸들러 추가
   const handleCategoryDragStart = (categoryId: number) => {
+    // 애니메이션 설정
+    LayoutAnimation.configureNext(animationConfig);
+    
     setDraggingCategoryId(categoryId);
     
     // 해당 카테고리 접기
@@ -311,6 +325,9 @@ export function TodoList({ activityId }: TodoListProps) {
   const handleCategoryDragEnd = () => {
     // 드래그가 끝나면 상태 초기화
     if (draggingCategoryId) {
+      // 애니메이션 설정
+      LayoutAnimation.configureNext(animationConfig);
+      
       // 카테고리를 다시 원래대로 펼침
       setTimeout(() => {
         setExpandedCategories(prev => ({
@@ -318,7 +335,7 @@ export function TodoList({ activityId }: TodoListProps) {
           [draggingCategoryId]: true
         }));
         setDraggingCategoryId(null);
-      }, 300); // 애니메이션을 위한 지연
+      }, 100); // 애니메이션을 위한 지연 시간 단축
     }
   };
 
@@ -332,7 +349,7 @@ export function TodoList({ activityId }: TodoListProps) {
   const integratedItems: IntegratedItem[] = useMemo(() => {
     const items: IntegratedItem[] = [];
     
-    // 카테고리 추가
+    // 애니메이션 적용을 위해 항상 모든 카테고리 아이템은 추가
     categories.forEach((category: TodoCategoryType) => {
       items.push({
         id: `category-${category.id}`,
@@ -345,23 +362,37 @@ export function TodoList({ activityId }: TodoListProps) {
       // 드래그 중인 카테고리의 할일은 렌더링하지 않음 (통째로 이동 효과)
       if (draggingCategoryId !== category.id) {
         const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
-        categoryTodos.forEach(todo => {
-          items.push({
-            id: `todo-${todo.id}`,
-            type: 'todo',
-            data: todo,
-            categoryId: category.id,
-            parentId: `category-${category.id}`
+        
+        // 카테고리가 확장된 상태인 경우에만 할일 추가 (애니메이션 지원)
+        if (expandedCategories[category.id] !== false) {
+          categoryTodos.forEach(todo => {
+            items.push({
+              id: `todo-${todo.id}`,
+              type: 'todo',
+              data: todo,
+              categoryId: category.id,
+              parentId: `category-${category.id}`
+            });
           });
-        });
+        }
       }
     });
     
     return items;
-  }, [categories, todos, draggingCategoryId]);
+  }, [categories, todos, draggingCategoryId, expandedCategories]);
   
   // 통합 아이템 드래그 앤 드롭 핸들러
   const handleIntegratedDragEnd = ({ data }: { data: IntegratedItem[] }) => {
+    // 드래그 종료 후 애니메이션 설정
+    LayoutAnimation.configureNext({
+      ...animationConfig,
+      duration: 300,
+      update: {
+        ...animationConfig.update,
+        duration: 300
+      }
+    });
+    
     // 드래그 종료 후 카테고리 펼치기
     handleCategoryDragEnd();
     
@@ -473,13 +504,15 @@ export function TodoList({ activityId }: TodoListProps) {
       const todo = item.data as TodoItemType;
       const isParentSelected = selectedCategoryId === todo.categoryId;
       
-      // 부모 카테고리가 접혀있으면 할일 아이템을 렌더링하지 않음
-      if (expandedCategories[todo.categoryId] === false) {
-        return null;
-      }
-      
+      // 할일 아이템은 부모 카테고리의 확장 상태에 따라 처리됨 (integratedItems에서)
       return (
-        <StyledView className={`pl-6 ml-2 border-l-2 ${isParentSelected ? 'border-blue-400' : 'border-gray-200'}`}>
+        <StyledView 
+          className={`pl-6 ml-2 border-l-2 ${isParentSelected ? 'border-blue-400' : 'border-gray-200'}`}
+          style={{ 
+            overflow: 'hidden',
+            maxHeight: 200 // 충분히 큰 값으로 설정하여 애니메이션이 자연스럽게 펼쳐지도록 함
+          }}
+        >
           <TodoItem
             todo={todo}
             onToggle={handleToggleTodo}
@@ -509,6 +542,9 @@ export function TodoList({ activityId }: TodoListProps) {
             <StyledTouchableOpacity 
               className="bg-blue-500 py-2 px-4 rounded-lg mr-2" 
               onPress={() => {
+                // 애니메이션 적용
+                LayoutAnimation.configureNext(animationConfig);
+                
                 // 선택된 카테고리가 있으면 해당 카테고리에 할일 추가, 없으면 기본 카테고리에 추가
                 const targetCategoryId = selectedCategoryId || 1;
                 handleStartAddTodoToCategory(targetCategoryId);
@@ -519,7 +555,11 @@ export function TodoList({ activityId }: TodoListProps) {
             
             <StyledTouchableOpacity 
               className="bg-blue-500 py-2 px-4 rounded-lg" 
-              onPress={handleStartAddCategory}
+              onPress={() => {
+                // 애니메이션 적용
+                LayoutAnimation.configureNext(animationConfig);
+                handleStartAddCategory();
+              }}
             >
               <StyledText className="text-white font-semibold">카테고리 추가</StyledText>
             </StyledTouchableOpacity>
