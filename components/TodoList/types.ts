@@ -39,6 +39,7 @@ export interface CategoryItemProps {
   isDropTarget?: boolean;
   isExpanded?: boolean;
   onExpandToggle?: (expanded: boolean) => void;
+  onDragStart?: () => void;
 }
 
 // 통합 데이터 아이템 타입

@@ -32,6 +32,7 @@ const CategoryItem = React.memo(({
   isDropTarget,
   isExpanded: externalIsExpanded,
   onExpandToggle,
+  onDragStart,
 }: CategoryItemProps) => {
   const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
   const [isExpanded, setIsExpanded] = useState(true);
@@ -81,6 +82,11 @@ const CategoryItem = React.memo(({
     LayoutAnimation.configureNext(animationConfig);
     setIsExpanded(false);
     onExpandToggle?.(false);
+    
+    // 외부 드래그 시작 핸들러 호출
+    if (onDragStart) {
+      onDragStart();
+    }
     
     setTimeout(() => drag?.(), 50);
   };

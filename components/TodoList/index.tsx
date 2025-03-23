@@ -62,6 +62,9 @@ export function TodoList({ activityId }: TodoListProps) {
   const [draggingTodoSourceCategoryId, setDraggingTodoSourceCategoryId] = useState<number | null>(null);
   const [dropTargetCategoryId, setDropTargetCategoryId] = useState<number | null>(null);
   
+  // 카테고리 드래그 상태 추가
+  const [draggingCategoryId, setDraggingCategoryId] = useState<number | null>(null);
+  
   // 카테고리 위치 정보를 저장할 ref
   const categoryLayoutsRef = useRef<Record<number, { y: number, height: number, x: number, width: number }>>({});
   
@@ -293,6 +296,32 @@ export function TodoList({ activityId }: TodoListProps) {
     setDraggingTodoSourceCategoryId(categoryId);
   };
 
+  // 카테고리 드래그 시작 핸들러 추가
+  const handleCategoryDragStart = (categoryId: number) => {
+    setDraggingCategoryId(categoryId);
+    
+    // 해당 카테고리 접기
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryId]: false
+    }));
+  };
+
+  // 카테고리 드래그 종료 핸들러
+  const handleCategoryDragEnd = () => {
+    // 드래그가 끝나면 상태 초기화
+    if (draggingCategoryId) {
+      // 카테고리를 다시 원래대로 펼침
+      setTimeout(() => {
+        setExpandedCategories(prev => ({
+          ...prev,
+          [draggingCategoryId]: true
+        }));
+        setDraggingCategoryId(null);
+      }, 300); // 애니메이션을 위한 지연
+    }
+  };
+
   // 카테고리 레이아웃 정보 저장
   const handleCategoryLayout = (categoryId: number, event: any) => {
     const { x, y, width, height } = event.nativeEvent.layout;
@@ -313,23 +342,29 @@ export function TodoList({ activityId }: TodoListProps) {
       });
       
       // 해당 카테고리의 할일 목록 추가
-      const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
-      categoryTodos.forEach(todo => {
-        items.push({
-          id: `todo-${todo.id}`,
-          type: 'todo',
-          data: todo,
-          categoryId: category.id,
-          parentId: `category-${category.id}`
+      // 드래그 중인 카테고리의 할일은 렌더링하지 않음 (통째로 이동 효과)
+      if (draggingCategoryId !== category.id) {
+        const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
+        categoryTodos.forEach(todo => {
+          items.push({
+            id: `todo-${todo.id}`,
+            type: 'todo',
+            data: todo,
+            categoryId: category.id,
+            parentId: `category-${category.id}`
+          });
         });
-      });
+      }
     });
     
     return items;
-  }, [categories, todos]);
+  }, [categories, todos, draggingCategoryId]);
   
   // 통합 아이템 드래그 앤 드롭 핸들러
   const handleIntegratedDragEnd = ({ data }: { data: IntegratedItem[] }) => {
+    // 드래그 종료 후 카테고리 펼치기
+    handleCategoryDragEnd();
+    
     // 카테고리 순서 업데이트
     const categoryOrder = data
       .filter(item => item.type === 'category')
@@ -430,6 +465,7 @@ export function TodoList({ activityId }: TodoListProps) {
             isDropTarget={dropTargetCategoryId === category.id}
             isExpanded={isExpanded}
             onExpandToggle={(expanded) => handleCategoryExpand(category.id, expanded)}
+            onDragStart={() => handleCategoryDragStart(category.id)}
           />
         </StyledView>
       );
