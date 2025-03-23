@@ -418,7 +418,6 @@ export function TodoList({ activityId }: TodoListProps) {
             isSelected={selectedCategoryId === category.id}
             onToggle={handleCategoryToggle}
             onAddTodo={handleStartAddTodoToCategory}
-            onLongPress={handleOpenCategoryMenu}
             isAddingTodo={addingTodoForCategoryId === category.id}
             newTodoText={newTodo}
             onNewTodoChange={setNewTodo}

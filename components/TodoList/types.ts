@@ -24,9 +24,9 @@ export interface CategoryItemProps {
   category: TodoCategoryType;
   todos: TodoItemType[];
   isSelected: boolean;
-  onToggle: (id: number) => void;
-  onAddTodo: (id: number) => void;
-  onLongPress: (id: number, event: any) => void;
+  onToggle?: (categoryId: number) => void;
+  onAddTodo?: (categoryId: number) => void;
+  onLongPress?: (categoryId: number, event: any) => void;
   isAddingTodo: boolean;
   newTodoText: string;
   onNewTodoChange: (text: string) => void;
@@ -34,7 +34,7 @@ export interface CategoryItemProps {
   onNewTodoCancel: () => void;
   newTodoInputRef: React.RefObject<TextInput>;
   drag?: () => void;
-  isActive?: boolean;
+  isActive: boolean;
   onLayout?: (event: any) => void;
   isDropTarget?: boolean;
   isExpanded?: boolean;

@@ -116,7 +116,8 @@ const CategoryItem = React.memo(({
       <StyledTouchableOpacity
         className="flex-1 flex-row items-center"
         onPress={handleCategoryClick}
-        onLongPress={(event) => onLongPress?.(category.id, event)}
+        onLongPress={handleDragStart}
+        delayLongPress={150}
       >
         <StyledText className={`font-bold text-base ${isSelected ? 'text-blue-600' : ''}`}>
           {category.title}
@@ -140,9 +141,6 @@ const CategoryItem = React.memo(({
         </StyledTouchableOpacity>
         <StyledTouchableOpacity onPress={() => onAddTodo?.(category.id)}>
           <Ionicons name="add" size={20} color="#007AFF" />
-        </StyledTouchableOpacity>
-        <StyledTouchableOpacity className="ml-2" onPressIn={handleDragStart}>
-          <Ionicons name="reorder-three" size={20} color="#999" />
         </StyledTouchableOpacity>
       </StyledView>
     </StyledView>
