@@ -401,69 +401,86 @@ export function TodoList({ activityId }: TodoListProps) {
       .filter(item => item.type === 'category')
       .map(item => (item.data as TodoCategoryType).id);
     
-    // 카테고리 간 이동이 발생했는지 확인하고 처리
-    // 각 할일 아이템 앞에 있는 카테고리를 확인하여 소속 결정
-    let currentCategoryId: number | null = null;
-    const todoMoves: {todoId: string, targetCategoryId: number}[] = [];
-    
-    // 할일 아이템별 소속 카테고리 및 순서 처리
-    const todoOrderByCategory: Record<number, string[]> = {};
-    
-    // 모든 아이템을 순회하며 처리
-    data.forEach(item => {
-      if (item.type === 'category') {
-        // 카테고리 아이템을 만나면 현재 카테고리 ID 갱신
-        currentCategoryId = (item.data as TodoCategoryType).id;
-      } else if (item.type === 'todo' && currentCategoryId !== null) {
-        const todo = item.data as TodoItemType;
-        
-        // 현재 카테고리 ID로 순서 배열 초기화 (없을 경우)
-        if (!todoOrderByCategory[currentCategoryId]) {
-          todoOrderByCategory[currentCategoryId] = [];
-        }
-        
-        // 현재 카테고리에 할일 ID 추가
-        todoOrderByCategory[currentCategoryId].push(todo.id);
-        
-        // 카테고리가 변경되었는지 확인
-        if (todo.categoryId !== currentCategoryId) {
-          // 카테고리 변경 필요
-          todoMoves.push({
-            todoId: todo.id,
-            targetCategoryId: currentCategoryId
-          });
-        }
-      }
-    });
-    
     // 카테고리 순서 변경 디스패치
     dispatch(reorderCategories({
       activityId,
       newOrder: categoryOrder
     }));
-    
-    // 카테고리 간 이동이 있는 할일들 처리
-    todoMoves.forEach(({todoId, targetCategoryId}) => {
-      dispatch(moveTodoToCategory({
-        activityId,
-        todoId,
-        targetCategoryId
-      }));
-    });
-    
-    // 각 카테고리별 할일 순서 변경 디스패치
-    Object.entries(todoOrderByCategory).forEach(([categoryIdStr, order]) => {
-      const categoryId = parseInt(categoryIdStr);
+
+    // 할일만 따로 처리 (카테고리간 이동은 여기서 처리하지 않음)
+    if (draggingTodoId && draggingTodoSourceCategoryId) {
+      // 할일 드래그 중이면, 해당 할일이 현재 어떤 카테고리 위치에 있는지 확인
+      let currentCategoryId: number | null = null;
+      let targetIndex: number = 0;
+      let foundMovingTodo = false;
+
+      // 통합 아이템 배열을 순회하면서 현재 카테고리와 드래그한 할일의 위치 확인
+      for (let i = 0; i < data.length; i++) {
+        const item = data[i];
+        
+        if (item.type === 'category') {
+          // 카테고리를 만날 때마다 현재 카테고리 ID 업데이트
+          currentCategoryId = (item.data as TodoCategoryType).id;
+          // 새 카테고리로 넘어갈 때마다 인덱스 초기화
+          targetIndex = 0;
+        } else if (item.type === 'todo') {
+          const todo = item.data as TodoItemType;
+          
+          // 현재 처리 중인 아이템이 드래그한 할일이라면
+          if (todo.id === draggingTodoId) {
+            foundMovingTodo = true;
+            
+            // 카테고리가 변경되었다면 할일 이동 처리
+            if (currentCategoryId !== null && currentCategoryId !== draggingTodoSourceCategoryId) {
+              dispatch(moveTodoToCategory({
+                activityId,
+                todoId: draggingTodoId,
+                targetCategoryId: currentCategoryId,
+                targetIndex: targetIndex
+              }));
+            } else if (currentCategoryId !== null) {
+              // 같은 카테고리 내에서 순서 변경
+              const categoryTodos = todos.filter(t => t.categoryId === currentCategoryId);
+              const orderIds = categoryTodos.map(t => t.id);
+              
+              // 원래 위치에서 제거
+              const sourceIndex = orderIds.findIndex(id => id === draggingTodoId);
+              if (sourceIndex !== -1) {
+                orderIds.splice(sourceIndex, 1);
+              }
+              
+              // 새 위치에 삽입
+              orderIds.splice(targetIndex, 0, draggingTodoId);
+              
+              // 순서 업데이트
+              dispatch(reorderTodos({
+                activityId,
+                categoryId: currentCategoryId,
+                newOrder: orderIds
+              }));
+            }
+            break;
+          }
+          
+          // 다음 할일을 위해 인덱스 증가
+          targetIndex++;
+        }
+      }
       
-      // 해당 카테고리에 할일이 있을 경우에만 순서 변경 수행
-      if (order.length > 0) {
-        dispatch(reorderTodos({
+      // 카테고리 사이로 드래그된 경우 처리
+      if (!foundMovingTodo && currentCategoryId !== null && currentCategoryId !== draggingTodoSourceCategoryId) {
+        // 마지막으로 찾은 카테고리로 이동
+        dispatch(moveTodoToCategory({
           activityId,
-          categoryId,
-          newOrder: order
+          todoId: draggingTodoId,
+          targetCategoryId: currentCategoryId
         }));
       }
-    });
+    }
+
+    // 드래그 상태 초기화
+    setDraggingTodoId(null);
+    setDraggingTodoSourceCategoryId(null);
   };
   
   // 아이템 유형에 따른 렌더링
