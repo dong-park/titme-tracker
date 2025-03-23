@@ -1,32 +1,28 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
-import { Alert, Dimensions, TextInput } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useSelector, useDispatch } from 'react-redux';
-import { createSelector } from '@reduxjs/toolkit';
 import { RootState } from '@/store/store';
-import { 
-  addTodo, 
-  toggleTodo, 
-  deleteTodo, 
-  addCategory, 
-  initializeActivity, 
-  deleteCategory, 
-  reorderTodos, 
-  moveTodoToCategory, 
-  TodoItem as TodoItemType, 
-  TodoCategory as TodoCategoryType,
-  reorderCategories
+import {
+    addCategory,
+    addTodo,
+    deleteCategory,
+    deleteTodo,
+    initializeActivity,
+    moveTodoToCategory,
+    reorderCategories,
+    reorderTodos,
+    TodoCategory as TodoCategoryType,
+    TodoItem as TodoItemType,
+    toggleTodo
 } from '@/store/todoSlice';
+import { Ionicons } from '@expo/vector-icons';
+import { createSelector } from '@reduxjs/toolkit';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Alert, Dimensions, TextInput } from 'react-native';
+import DraggableFlatList from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import DraggableFlatList, { 
-  ScaleDecorator, 
-  OpacityDecorator
-} from 'react-native-draggable-flatlist';
-import { TodoListProps, IntegratedItem } from './types';
-import { StyledView, StyledText, StyledTextInput, StyledTouchableOpacity, StyledScrollView } from './styles';
-import TodoItem from './TodoItem';
+import { useDispatch, useSelector } from 'react-redux';
 import CategoryItem from './CategoryItem';
-import * as handlers from './handlers';
+import { StyledScrollView, StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
+import TodoItem from './TodoItem';
+import { IntegratedItem, TodoListProps } from './types';
 
 // 메모이제이션된 선택자 생성
 const selectTodosByActivityId = createSelector(
@@ -69,10 +65,44 @@ export function TodoList({ activityId }: TodoListProps) {
   // 카테고리 위치 정보를 저장할 ref
   const categoryLayoutsRef = useRef<Record<number, { y: number, height: number, x: number, width: number }>>({});
   
+  // 카테고리 확장/축소 상태를 저장하는 상태 추가
+  const [expandedCategories, setExpandedCategories] = useState<Record<number, boolean>>({});
+  
   // 활동 초기화 (첫 렌더링 시 기본 카테고리 생성)
   useEffect(() => {
     dispatch(initializeActivity({ activityId }));
+    
+    // 모든 카테고리를 기본적으로 확장 상태로 초기화
+    if (categories.length > 0) {
+      const initialExpandedState: Record<number, boolean> = {};
+      categories.forEach((category: TodoCategoryType) => {
+        initialExpandedState[category.id] = true;
+      });
+      setExpandedCategories(initialExpandedState);
+    }
   }, [activityId, dispatch]);
+  
+  // 카테고리 목록이 변경될 때마다 확장 상태 맵 업데이트
+  useEffect(() => {
+    if (categories.length > 0) {
+      const updatedExpandedState = { ...expandedCategories };
+      categories.forEach((category: TodoCategoryType) => {
+        // 새로 추가된 카테고리는 기본적으로 확장 상태로 설정
+        if (updatedExpandedState[category.id] === undefined) {
+          updatedExpandedState[category.id] = true;
+        }
+      });
+      setExpandedCategories(updatedExpandedState);
+    }
+  }, [categories]);
+  
+  // 카테고리 확장/축소 토글 함수
+  const handleCategoryExpand = (categoryId: number, isExpanded: boolean) => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [categoryId]: isExpanded
+    }));
+  };
 
   // 카테고리 추가 시작
   const handleStartAddCategory = () => {
@@ -222,42 +252,6 @@ export function TodoList({ activityId }: TodoListProps) {
     );
   };
 
-  // 할일 순서 변경 핸들러
-  const handleTodoDragEnd = (categoryId: number, newOrder: string[]) => {
-    // 드래그 중인 할일이 있고, 드롭 타겟 카테고리가 있으면 카테고리 간 이동
-    if (draggingTodoId && dropTargetCategoryId && dropTargetCategoryId !== categoryId) {
-      dispatch(moveTodoToCategory({
-        activityId,
-        todoId: draggingTodoId,
-        targetCategoryId: dropTargetCategoryId
-      }));
-      
-      // 상태 초기화
-      setDraggingTodoId(null);
-      setDraggingTodoSourceCategoryId(null);
-      setDropTargetCategoryId(null);
-    } else {
-      // 같은 카테고리 내에서 순서 변경
-      dispatch(reorderTodos({
-        activityId,
-        categoryId,
-        newOrder
-      }));
-    }
-  };
-
-  // 카테고리 순서 변경 핸들러
-  const handleCategoryDragEnd = ({ data }: { data: TodoCategoryType[] }) => {
-    // 카테고리 순서 변경 로직 구현
-    console.log('카테고리 순서 변경:', data.map(cat => cat.id));
-    
-    // 카테고리 순서 변경 액션 디스패치
-    dispatch(reorderCategories({
-      activityId,
-      newOrder: data.map(cat => cat.id)
-    }));
-  };
-
   // 할일 이동 메뉴 열기
   const handleOpenTodoMoveMenu = (todoId: string, sourceCategoryId: number) => {
     setMovingTodoId(todoId);
@@ -299,50 +293,11 @@ export function TodoList({ activityId }: TodoListProps) {
     setDraggingTodoSourceCategoryId(categoryId);
   };
 
-  // 할일 드롭 핸들러
-  const handleTodoDrop = (todoId: string, targetCategoryId: number) => {
-    if (draggingTodoId && draggingTodoSourceCategoryId && targetCategoryId !== draggingTodoSourceCategoryId) {
-      setDropTargetCategoryId(targetCategoryId);
-    }
-  };
-
   // 카테고리 레이아웃 정보 저장
   const handleCategoryLayout = (categoryId: number, event: any) => {
     const { x, y, width, height } = event.nativeEvent.layout;
     categoryLayoutsRef.current[categoryId] = { x, y, width, height };
   };
-
-  // 드래그 중인 할일의 위치에 따라 드롭 타겟 카테고리 감지
-  const handleTodoDragMove = (event: any) => {
-    if (!draggingTodoId || !draggingTodoSourceCategoryId) return;
-    
-    const { pageX, pageY } = event.nativeEvent;
-    
-    // 각 카테고리의 영역과 비교하여 드롭 타겟 결정
-    let foundTargetCategory = null;
-    
-    Object.entries(categoryLayoutsRef.current).forEach(([categoryIdStr, layout]) => {
-      const categoryId = parseInt(categoryIdStr);
-      
-      if (
-        pageX >= layout.x && 
-        pageX <= layout.x + layout.width && 
-        pageY >= layout.y && 
-        pageY <= layout.y + layout.height &&
-        categoryId !== draggingTodoSourceCategoryId
-      ) {
-        foundTargetCategory = categoryId;
-      }
-    });
-    
-    setDropTargetCategoryId(foundTargetCategory);
-  };
-
-  // 카테고리별 할일 목록 필터링
-  const filteredTodos = useMemo(() => {
-    // 카테고리 선택과 관계없이 항상 모든 할일 표시
-    return todos;
-  }, [todos]);
 
   // 통합 데이터 생성 - 카테고리와 할일을 하나의 배열로 합치기
   const integratedItems: IntegratedItem[] = useMemo(() => {
@@ -453,6 +408,8 @@ export function TodoList({ activityId }: TodoListProps) {
   }) => {
     if (item.type === 'category') {
       const category = item.data as TodoCategoryType;
+      const isExpanded = expandedCategories[category.id] !== false; // 기본값은 true
+      
       return (
         <StyledView className="z-10">
           <CategoryItem
@@ -462,10 +419,6 @@ export function TodoList({ activityId }: TodoListProps) {
             onToggle={handleCategoryToggle}
             onAddTodo={handleStartAddTodoToCategory}
             onLongPress={handleOpenCategoryMenu}
-            onTodoToggle={handleToggleTodo}
-            onTodoDelete={handleDeleteTodo}
-            onTodoDragEnd={handleTodoDragEnd}
-            onTodoLongPress={handleOpenTodoMoveMenu}
             isAddingTodo={addingTodoForCategoryId === category.id}
             newTodoText={newTodo}
             onNewTodoChange={setNewTodo}
@@ -474,18 +427,24 @@ export function TodoList({ activityId }: TodoListProps) {
             newTodoInputRef={newTodoInputRef}
             drag={drag}
             isActive={isActive}
-            onTodoDrop={handleTodoDrop}
             onLayout={(event) => handleCategoryLayout(category.id, event)}
             isDropTarget={dropTargetCategoryId === category.id}
-            handleTodoDragStart={handleTodoDragStart}
-            integratedMode={true}
+            isExpanded={isExpanded}
+            onExpandToggle={(expanded) => handleCategoryExpand(category.id, expanded)}
           />
         </StyledView>
       );
     } else {
       const todo = item.data as TodoItemType;
+      const isParentSelected = selectedCategoryId === todo.categoryId;
+      
+      // 부모 카테고리가 접혀있으면 할일 아이템을 렌더링하지 않음
+      if (expandedCategories[todo.categoryId] === false) {
+        return null;
+      }
+      
       return (
-        <StyledView className="pl-6 ml-2 border-l-2 border-gray-200">
+        <StyledView className={`pl-6 ml-2 border-l-2 ${isParentSelected ? 'border-blue-400' : 'border-gray-200'}`}>
           <TodoItem
             todo={todo}
             onToggle={handleToggleTodo}
@@ -494,7 +453,7 @@ export function TodoList({ activityId }: TodoListProps) {
             isActive={isActive}
             onLongPress={() => handleOpenTodoMoveMenu(todo.id, todo.categoryId)}
             onDragStart={() => handleTodoDragStart(todo.id, todo.categoryId)}
-            isHighlighted={selectedCategoryId === todo.categoryId}
+            isHighlighted={isParentSelected}
             parentCategoryId={todo.categoryId}
           />
         </StyledView>
@@ -511,12 +470,25 @@ export function TodoList({ activityId }: TodoListProps) {
             <StyledText className="text-2xl font-bold text-gray-800">할 일 목록</StyledText>
           </StyledView>
           
-          <StyledTouchableOpacity 
-            className="bg-blue-500 py-2 px-4 rounded-lg" 
-            onPress={handleStartAddCategory}
-          >
-            <StyledText className="text-white font-semibold">카테고리 추가</StyledText>
-          </StyledTouchableOpacity>
+          <StyledView className="flex-row">
+            <StyledTouchableOpacity 
+              className="bg-blue-500 py-2 px-4 rounded-lg mr-2" 
+              onPress={() => {
+                // 선택된 카테고리가 있으면 해당 카테고리에 할일 추가, 없으면 기본 카테고리에 추가
+                const targetCategoryId = selectedCategoryId || 1;
+                handleStartAddTodoToCategory(targetCategoryId);
+              }}
+            >
+              <StyledText className="text-white font-semibold">할일 추가</StyledText>
+            </StyledTouchableOpacity>
+            
+            <StyledTouchableOpacity 
+              className="bg-blue-500 py-2 px-4 rounded-lg" 
+              onPress={handleStartAddCategory}
+            >
+              <StyledText className="text-white font-semibold">카테고리 추가</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
         </StyledView>
         
         {/* 카테고리 추가 입력 영역 */}
@@ -558,7 +530,7 @@ export function TodoList({ activityId }: TodoListProps) {
         />
         
         {/* 카테고리 컨텍스트 메뉴 */}
-        {/* {menuVisible && (
+        {menuVisible && (
           <StyledView 
             className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2"
             style={{ top: menuPosition.top, left: menuPosition.left }}
@@ -579,10 +551,10 @@ export function TodoList({ activityId }: TodoListProps) {
               <StyledText className="ml-2 text-gray-700">닫기</StyledText>
             </StyledTouchableOpacity>
           </StyledView>
-        )} */}
+        )}
         
         {/* 할일 이동 메뉴 */}
-        {/* {todoMoveMenuVisible && (
+        {todoMoveMenuVisible && (
           <StyledView 
             className="absolute bg-white border border-gray-300 rounded-lg shadow-lg p-2"
             style={{ 
@@ -617,7 +589,7 @@ export function TodoList({ activityId }: TodoListProps) {
               <StyledText className="ml-2">닫기</StyledText>
             </StyledTouchableOpacity>
           </StyledView>
-        )} */}
+        )}
       </StyledView>
     </GestureHandlerRootView>
   );

@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import { ScaleDecorator, OpacityDecorator } from 'react-native-draggable-flatlist';
-import DraggableFlatList from 'react-native-draggable-flatlist';
 import { LayoutAnimation, Platform, UIManager } from 'react-native';
 import { CategoryItemProps } from './types';
 import { StyledView, StyledText, StyledTextInput, StyledTouchableOpacity } from './styles';
-import TodoItem from './TodoItem';
 
 // LayoutAnimation 설정 (안드로이드 대응)
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
+
+// 애니메이션 프리셋 설정
+const animationConfig = LayoutAnimation.Presets.easeInEaseOut;
 
 const CategoryItem = React.memo(({
   category,
@@ -19,10 +20,6 @@ const CategoryItem = React.memo(({
   onToggle,
   onAddTodo,
   onLongPress,
-  onTodoToggle,
-  onTodoDelete,
-  onTodoDragEnd,
-  onTodoLongPress,
   isAddingTodo,
   newTodoText,
   onNewTodoChange,
@@ -31,16 +28,22 @@ const CategoryItem = React.memo(({
   newTodoInputRef,
   drag,
   isActive,
-  onTodoDrop,
   onLayout,
   isDropTarget,
-  handleTodoDragStart,
-  integratedMode
+  isExpanded: externalIsExpanded,
+  onExpandToggle,
 }: CategoryItemProps) => {
   const categoryTodos = todos.filter(todo => todo.categoryId === category.id);
   const [isExpanded, setIsExpanded] = useState(true);
   const savedExpandState = useRef(true);
   const isDragging = useRef(false);
+  
+  // 외부에서 제공된 확장 상태가 있으면 내부 상태 동기화
+  useEffect(() => {
+    if (externalIsExpanded !== undefined) {
+      setIsExpanded(externalIsExpanded);
+    }
+  }, [externalIsExpanded]);
   
   // 드래그 상태 처리
   useEffect(() => {
@@ -49,18 +52,22 @@ const CategoryItem = React.memo(({
       
       if (savedExpandState.current) {
         setTimeout(() => {
-          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+          LayoutAnimation.configureNext(animationConfig);
           setIsExpanded(true);
+          onExpandToggle?.(true);
         }, 300);
       }
     }
-  }, [isActive]);
+  }, [isActive, onExpandToggle]);
   
   // 카테고리 토글
   const handleCategoryClick = () => {
     if (!isDragging.current) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setIsExpanded(prev => !prev);
+      LayoutAnimation.configureNext(animationConfig);
+      const newExpandedState = !isExpanded;
+      setIsExpanded(newExpandedState);
+      // 부모 컴포넌트에 상태 변경 알림
+      onExpandToggle?.(newExpandedState);
     }
   };
   
@@ -71,21 +78,14 @@ const CategoryItem = React.memo(({
     isDragging.current = true;
     savedExpandState.current = isExpanded;
     
-    // 통합 모드에서는 축소하지 않음
-    if (!integratedMode) {
-      LayoutAnimation.configureNext({
-        duration: 0,
-        create: { type: 'linear', property: 'opacity' },
-        update: { type: 'linear', property: 'opacity' },
-        delete: { type: 'linear', property: 'opacity' }
-      });
-      setIsExpanded(false);
-    }
+    LayoutAnimation.configureNext(animationConfig);
+    setIsExpanded(false);
+    onExpandToggle?.(false);
     
     setTimeout(() => drag?.(), 50);
   };
   
-  // 뉴 할일 입력 UI
+  // 할일 입력 UI
   const renderAddTodoInput = () => {
     if (!isAddingTodo) return null;
     
@@ -107,54 +107,6 @@ const CategoryItem = React.memo(({
           <Ionicons name="checkmark" size={20} color="#007AFF" />
         </StyledTouchableOpacity>
       </StyledView>
-    );
-  };
-
-  // 할일 목록 UI
-  const renderTodoList = () => {
-    if (categoryTodos.length === 0) {
-      return (
-        <StyledView 
-          className="py-4 items-center"
-          onTouchEnd={() => onTodoDrop?.('', category.id)}
-        >
-          <StyledText className="text-gray-400">할일이 없습니다</StyledText>
-        </StyledView>
-      );
-    }
-    
-    // 통합 모드에서는 할일 목록을 표시하지 않음 (상위 컴포넌트에서 처리)
-    if (integratedMode) {
-      return (
-        <StyledView 
-          className="py-2 items-center"
-          onTouchEnd={() => onTodoDrop?.('', category.id)}
-        >
-          <StyledText className="text-xs text-gray-400">통합 모드에서는 할일이 별도로 표시됩니다</StyledText>
-        </StyledView>
-      );
-    }
-    
-    return (
-      <DraggableFlatList
-        data={categoryTodos}
-        keyExtractor={(item) => item.id}
-        onDragEnd={({ data }) => {
-          onTodoDragEnd?.(category.id, data.map(item => item.id));
-        }}
-        renderItem={({ item, drag, isActive }) => (
-          <TodoItem
-            todo={item}
-            onToggle={onTodoToggle}
-            onDelete={onTodoDelete}
-            drag={drag}
-            isActive={isActive}
-            onLongPress={() => onTodoLongPress?.(item.id, category.id)}
-            onDragStart={() => handleTodoDragStart?.(item.id, category.id)}
-            isHighlighted={isSelected}
-          />
-        )}
-      />
     );
   };
 
@@ -196,29 +148,31 @@ const CategoryItem = React.memo(({
     </StyledView>
   );
 
+  // 스타일 클래스 계산
+  const containerClassName = `mb-4 rounded-lg border ${
+    isDropTarget ? 'border-blue-500 border-2 bg-blue-50 shadow-lg' : 
+    isSelected ? 'border-blue-400 border-2' : 'border-gray-200'
+  } ${
+    isActive ? 'bg-gray-50 shadow-xl' : isSelected ? 'bg-blue-50' : 'bg-white'
+  }`;
+
   return (
     <ScaleDecorator>
       <OpacityDecorator activeOpacity={0.7}>
         <StyledView 
-          className={`mb-4 rounded-lg border ${
-            isDropTarget ? 'border-blue-500 border-2 bg-blue-50 shadow-lg' : 
-            isSelected ? 'border-blue-400 border-2' : 'border-gray-200'
-          } ${
-            isActive ? 'bg-gray-50 shadow-xl' : isSelected ? 'bg-blue-50' : 'bg-white'
-          }`}
+          className={containerClassName}
           onLayout={onLayout}
         >
           {renderCategoryHeader()}
           
-          {(!integratedMode || isExpanded) && (
+          {isExpanded && (
             <StyledView className={`bg-white rounded-b-lg overflow-hidden ${isDropTarget ? 'bg-blue-50' : ''}`}>
               {renderAddTodoInput()}
-              {renderTodoList()}
             </StyledView>
           )}
           
-          {/* 드롭 영역 표시 (통합 모드에서만) */}
-          {integratedMode && isDropTarget && (
+          {/* 드롭 영역 표시 */}
+          {isDropTarget && (
             <StyledView 
               className="absolute inset-0 border-2 border-blue-500 rounded-lg bg-blue-100 opacity-20"
               style={{ zIndex: -1 }}

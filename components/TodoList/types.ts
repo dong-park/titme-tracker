@@ -27,10 +27,6 @@ export interface CategoryItemProps {
   onToggle: (id: number) => void;
   onAddTodo: (id: number) => void;
   onLongPress: (id: number, event: any) => void;
-  onTodoToggle: (id: string) => void;
-  onTodoDelete: (id: string) => void;
-  onTodoDragEnd: (categoryId: number, newOrder: string[]) => void;
-  onTodoLongPress: (todoId: string, categoryId: number) => void;
   isAddingTodo: boolean;
   newTodoText: string;
   onNewTodoChange: (text: string) => void;
@@ -39,11 +35,10 @@ export interface CategoryItemProps {
   newTodoInputRef: React.RefObject<TextInput>;
   drag?: () => void;
   isActive?: boolean;
-  onTodoDrop?: (todoId: string, sourceCategoryId: number) => void;
   onLayout?: (event: any) => void;
   isDropTarget?: boolean;
-  handleTodoDragStart?: (todoId: string, categoryId: number) => void;
-  integratedMode?: boolean; // 통합 드래그 앤 드롭 모드 여부
+  isExpanded?: boolean;
+  onExpandToggle?: (expanded: boolean) => void;
 }
 
 // 통합 데이터 아이템 타입

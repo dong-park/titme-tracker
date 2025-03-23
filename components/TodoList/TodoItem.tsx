@@ -23,7 +23,7 @@ const TodoItem = React.memo(({
     <ScaleDecorator activeScale={0.95}>
       <OpacityDecorator activeOpacity={0.8}>
         <StyledView
-          className={`flex-row items-center py-2 px-4 border-b border-gray-100 
+          className={`flex-row items-center py-2 px-4 mb-1 
             ${isActive ? 'bg-blue-100 shadow-md' : 'bg-white'} 
             ${isHighlighted ? 'bg-blue-50' : ''}
             ${todo.completed ? 'opacity-70' : ''}
@@ -32,20 +32,35 @@ const TodoItem = React.memo(({
             transform: [{ scale: isActive ? 1.02 : 1 }],
             zIndex: isActive ? 1 : 0,
             marginVertical: 1,
-            borderRadius: 6
+            borderRadius: 6,
+            borderWidth: 1,
+            borderColor: isHighlighted ? '#93c5fd' : '#f3f4f6'
           }}
         >
           <StyledTouchableOpacity
             className="mr-3"
             onPress={() => onToggle(todo.id)}
           >
-            <StyledView className={`w-5 h-5 rounded-sm border ${todo.completed ? 'bg-blue-500 border-blue-500' : isHighlighted ? 'border-blue-600' : 'border-blue-500'} flex items-center justify-center`}>
+            <StyledView className={`w-5 h-5 rounded-sm border ${
+              todo.completed 
+                ? 'bg-blue-500 border-blue-500' 
+                : isHighlighted 
+                  ? 'border-blue-600' 
+                  : 'border-blue-500'
+            } flex items-center justify-center`}>
               {todo.completed && <Ionicons name="checkmark" size={16} color="#FFFFFF" />}
             </StyledView>
           </StyledTouchableOpacity>
           
           <StyledText 
-            className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-400' : isHighlighted ? 'text-blue-800 font-medium' : 'text-gray-800'}`}
+            className={`flex-1 text-base ${
+              todo.completed 
+                ? 'line-through text-gray-400' 
+                : isHighlighted 
+                  ? 'text-blue-800 font-medium' 
+                  : 'text-gray-800'
+            }`}
+            numberOfLines={2}
           >
             {todo.text}
           </StyledText>
