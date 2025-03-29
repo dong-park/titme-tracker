@@ -30,7 +30,7 @@ export const todoSlice = createSlice({
         state.todosByActivity[activityId] = [];
       }
       
-      state.todosByActivity[activityId].push({
+      state.todosByActivity[activityId].unshift({
         id: uuidv4(),
         text,
         completed: false,
@@ -77,6 +77,15 @@ export const todoSlice = createSlice({
         state.todosByActivity[activityId] = [];
       }
     },
+    
+    updateTodo: (state, action: PayloadAction<{ activityId: number; todoId: string; text: string }>) => {
+      const { activityId, todoId, text } = action.payload;
+      const todo = state.todosByActivity[activityId]?.find(todo => todo.id === todoId);
+      
+      if (todo) {
+        todo.text = text;
+      }
+    },
   },
 });
 
@@ -85,7 +94,8 @@ export const {
   toggleTodo, 
   deleteTodo,
   initializeActivity,
-  reorderTodos
+  reorderTodos,
+  updateTodo
 } = todoSlice.actions;
 
 export default todoSlice.reducer; 

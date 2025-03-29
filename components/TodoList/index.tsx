@@ -5,7 +5,8 @@ import {
     initializeActivity,
     reorderTodos,
     TodoItem as TodoItemType,
-    toggleTodo
+    toggleTodo,
+    updateTodo
 } from '@/store/todoSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { createSelector } from '@reduxjs/toolkit';
@@ -17,6 +18,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { StyledScrollView, StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
 import TodoItem from './TodoItem';
 import { TodoListProps } from './types';
+import { v4 as uuidv4 } from 'uuid';
 
 // LayoutAnimation 설정 (안드로이드 대응)
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -35,9 +37,16 @@ const selectTodosByActivityId = createSelector(
 export function TodoList({ activityId }: TodoListProps) {
   const dispatch = useDispatch();
   const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
-  const [newTodo, setNewTodo] = useState('');
-  const newTodoInputRef = useRef<TextInput>(null);
+  const [localTodos, setLocalTodos] = useState<TodoItemType[]>([]);
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState('');
+  const editInputRef = useRef<TextInput>(null);
   
+  // todos가 변경될 때 localTodos 업데이트
+  useEffect(() => {
+    setLocalTodos(todos);
+  }, [todos]);
+
   // 컴포넌트 마운트 시 활동 초기화
   useEffect(() => {
     dispatch(initializeActivity({ activityId }));
@@ -45,20 +54,31 @@ export function TodoList({ activityId }: TodoListProps) {
   
   // 할일 추가 시작
   const handleStartAddTodo = () => {
-    setNewTodo('');
-    newTodoInputRef.current?.focus();
-  };
-  
-  // 할일 추가 완료
-  const handleAddTodoSubmit = () => {
-    if (newTodo.trim() === '') return;
+    const newTodoId = uuidv4();
+    const newTodo: TodoItemType = {
+      id: newTodoId,
+      text: '',
+      completed: false,
+      date: new Date().toISOString(),
+    };
     
+    // 로컬 상태에 빈 할일 추가 (최상단에)
+    setLocalTodos([newTodo, ...localTodos]);
+    
+    // Redux 상태 업데이트
     dispatch(addTodo({
       activityId,
-      text: newTodo.trim()
+      text: ''
     }));
     
-    setNewTodo('');
+    // 편집 모드 활성화
+    setEditingTodoId(newTodoId);
+    setEditingText('');
+    
+    // 포커스 설정을 위한 지연
+    setTimeout(() => {
+      editInputRef.current?.focus();
+    }, 100);
   };
   
   // 할일 완료/미완료 토글
@@ -95,46 +115,80 @@ export function TodoList({ activityId }: TodoListProps) {
   
   // 할일 순서 변경
   const handleReorderTodos = ({ data }: { data: TodoItemType[] }) => {
-    LayoutAnimation.configureNext({
-      ...animationConfig,
-      duration: 100
-    });
+    // 드래그 앤 드롭 유효성 검사
+    const isValidMove = true; // 여기에 필요한 검증 로직 추가
     
-    const newOrder = data.map(todo => todo.id);
-    dispatch(reorderTodos({
+    if (isValidMove) {
+      setLocalTodos(data);
+      setTimeout(() => {
+        const newOrder = data.map(todo => todo.id);
+        dispatch(reorderTodos({
+          activityId,
+          newOrder
+        }));
+      }, 0);
+    } else {
+      // 잘못된 이동인 경우 원래 상태로 복원
+      setLocalTodos(todos);
+    }
+  };
+  
+  // 할일 편집 시작
+  const handleStartEdit = (todo: TodoItemType) => {
+    setEditingTodoId(todo.id);
+    setEditingText(todo.text);
+    setTimeout(() => {
+      editInputRef.current?.focus();
+    }, 100);
+  };
+
+  // 할일 편집 완료
+  const handleFinishEdit = () => {
+    if (!editingTodoId) return;
+    
+    if (editingText.trim() === '') {
+      // 빈 텍스트인 경우 할일 삭제
+      dispatch(deleteTodo({
+        activityId,
+        todoId: editingTodoId
+      }));
+      setEditingTodoId(null);
+      setEditingText('');
+      return;
+    }
+
+    dispatch(updateTodo({
       activityId,
-      newOrder
+      todoId: editingTodoId,
+      text: editingText.trim()
     }));
+
+    setEditingTodoId(null);
+    setEditingText('');
+  };
+
+  // 할일 편집 취소
+  const handleCancelEdit = () => {
+    if (!editingTodoId) return;
+    
+    // 빈 텍스트인 경우 할일 삭제
+    if (editingText.trim() === '') {
+      dispatch(deleteTodo({
+        activityId,
+        todoId: editingTodoId
+      }));
+    }
+    
+    setEditingTodoId(null);
+    setEditingText('');
   };
   
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StyledView className="flex-1">
-        {/* 할일 추가 버튼 */}
-        <StyledTouchableOpacity
-          className="flex-row items-center px-4 py-2 mb-2"
-          onPress={handleStartAddTodo}
-        >
-          <Ionicons name="add-circle-outline" size={24} color="#666" />
-          <StyledText className="ml-2 text-gray-600">새 할일 추가</StyledText>
-        </StyledTouchableOpacity>
-        
-        {/* 새 할일 입력 필드 */}
-        <StyledView className="px-4 mb-2">
-          <StyledTextInput
-            ref={newTodoInputRef}
-            className="border border-gray-300 rounded-lg px-4 py-2"
-            placeholder="할일을 입력하세요"
-            value={newTodo}
-            onChangeText={setNewTodo}
-            onSubmitEditing={handleAddTodoSubmit}
-            returnKeyType="done"
-          />
-        </StyledView>
-        
-        {/* 할일 목록 */}
+        {/* 할일 목록 - localTodos 사용 */}
         <DraggableFlatList
-          data={todos}
+          data={localTodos}
           onDragEnd={handleReorderTodos}
           keyExtractor={(item) => item.id}
           renderItem={({ item, drag, isActive }) => (
@@ -144,9 +198,24 @@ export function TodoList({ activityId }: TodoListProps) {
               onDelete={handleDeleteTodo}
               onDragStart={drag}
               isActive={isActive}
+              isEditing={editingTodoId === item.id}
+              editingText={editingText}
+              onStartEdit={() => handleStartEdit(item)}
+              onFinishEdit={handleFinishEdit}
+              onCancelEdit={handleCancelEdit}
+              onEditTextChange={setEditingText}
+              editInputRef={editInputRef}
             />
           )}
         />
+
+        {/* 플로팅 추가 버튼 */}
+        <StyledTouchableOpacity
+          className="absolute right-4 bottom-4 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
+          onPress={handleStartAddTodo}
+        >
+          <Ionicons name="add" size={32} color="white" />
+        </StyledTouchableOpacity>
       </StyledView>
     </GestureHandlerRootView>
   );

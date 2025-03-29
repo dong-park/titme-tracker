@@ -1,54 +1,96 @@
-import React from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import React, { RefObject } from 'react';
+import { TextInput, TouchableOpacity, View, Text } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { styled } from 'nativewind';
 import { TodoItem as TodoItemType } from '@/store/todoSlice';
+import { styled } from 'nativewind';
 
-const StyledView = styled(TouchableOpacity);
+const StyledTouchableOpacity = styled(TouchableOpacity);
 const StyledText = styled(Text);
+const StyledTextInput = styled(TextInput);
+const StyledView = styled(View);
 
-interface TodoItemProps {
+export interface TodoItemProps {
   todo: TodoItemType;
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
+  onToggle: (todoId: string) => void;
+  onDelete: (todoId: string) => void;
   onDragStart: () => void;
   isActive: boolean;
+  isEditing: boolean;
+  editingText: string;
+  onStartEdit: () => void;
+  onFinishEdit: () => void;
+  onCancelEdit: () => void;
+  onEditTextChange: (text: string) => void;
+  editInputRef: RefObject<TextInput>;
 }
 
-export default function TodoItem({ todo, onToggle, onDelete, onDragStart, isActive }: TodoItemProps) {
+const TodoItem: React.FC<TodoItemProps> = ({
+  todo,
+  onToggle,
+  onDelete,
+  onDragStart,
+  isActive,
+  isEditing,
+  editingText,
+  onStartEdit,
+  onFinishEdit,
+  onCancelEdit,
+  onEditTextChange,
+  editInputRef
+}) => {
   return (
-    <StyledView
-      className={`flex-row items-center p-4 bg-white border-b border-gray-200 ${
-        isActive ? 'bg-gray-50' : ''
-      }`}
+    <StyledTouchableOpacity
+      className={`flex-row items-center p-4 bg-white border-b border-gray-200 ${isActive ? 'bg-gray-50' : ''}`}
       onLongPress={onDragStart}
-      delayLongPress={200}
+      onPress={onStartEdit}
     >
-      <TouchableOpacity
+      <StyledTouchableOpacity
         className="mr-3"
         onPress={() => onToggle(todo.id)}
       >
         <Ionicons
           name={todo.completed ? 'checkmark-circle' : 'ellipse-outline'}
           size={24}
-          color={todo.completed ? '#4CAF50' : '#9E9E9E'}
+          color={todo.completed ? '#4CAF50' : '#666'}
         />
-      </TouchableOpacity>
-      
-      <StyledText
-        className={`flex-1 text-base ${
-          todo.completed ? 'text-gray-400 line-through' : 'text-gray-800'
-        }`}
-      >
-        {todo.text}
-      </StyledText>
-      
-      <TouchableOpacity
+      </StyledTouchableOpacity>
+
+      {isEditing ? (
+        <StyledView className="flex-1 flex-row items-center">
+          <StyledTextInput
+            ref={editInputRef}
+            className="flex-1 text-base border-b border-gray-300"
+            value={editingText}
+            onChangeText={onEditTextChange}
+            onSubmitEditing={onFinishEdit}
+            onBlur={onFinishEdit}
+            autoFocus
+            placeholder="할일을 입력하세요"
+            placeholderTextColor="#999"
+          />
+          <StyledTouchableOpacity
+            className="ml-2"
+            onPress={onCancelEdit}
+          >
+            <Ionicons name="close-circle" size={24} color="#666" />
+          </StyledTouchableOpacity>
+        </StyledView>
+      ) : (
+        <StyledText
+          className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-400' : ''}`}
+        >
+          {todo.text || '할일을 입력하세요'}
+        </StyledText>
+      )}
+
+      <StyledTouchableOpacity
         className="ml-3"
         onPress={() => onDelete(todo.id)}
       >
-        <Ionicons name="trash-outline" size={20} color="#FF3B30" />
-      </TouchableOpacity>
-    </StyledView>
+        <Ionicons name="trash-outline" size={20} color="#666" />
+      </StyledTouchableOpacity>
+    </StyledTouchableOpacity>
   );
-} 
+};
+
+export default TodoItem; 
