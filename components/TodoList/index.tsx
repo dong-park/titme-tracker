@@ -40,6 +40,7 @@ export function TodoList({ activityId }: TodoListProps) {
   const [localTodos, setLocalTodos] = useState<TodoItemType[]>([]);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const editInputRef = useRef<TextInput>(null);
   
   // todos가 변경될 때 localTodos 업데이트
@@ -89,28 +90,25 @@ export function TodoList({ activityId }: TodoListProps) {
     }));
   };
   
-  // 할일 삭제
-  const handleDeleteTodo = (todoId: string) => {
-    Alert.alert(
-      '할일 삭제',
-      '이 할일을 삭제하시겠습니까?',
-      [
-        {
-          text: '취소',
-          style: 'cancel'
-        },
-        {
-          text: '삭제',
-          style: 'destructive',
-          onPress: () => {
-            dispatch(deleteTodo({
-              activityId,
-              todoId
-            }));
-          }
-        }
-      ]
-    );
+  // 할일 삭제 대기 상태로 변경
+  const handleStartDelete = (todoId: string) => {
+    setPendingDeleteIds(prev => [...prev, todoId]);
+  };
+
+  // 할일 완전 삭제
+  const handleConfirmDelete = () => {
+    pendingDeleteIds.forEach(todoId => {
+      dispatch(deleteTodo({
+        activityId,
+        todoId
+      }));
+    });
+    setPendingDeleteIds([]);
+  };
+
+  // 삭제 취소
+  const handleCancelDelete = () => {
+    setPendingDeleteIds([]);
   };
   
   // 할일 순서 변경
@@ -186,7 +184,6 @@ export function TodoList({ activityId }: TodoListProps) {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StyledView className="flex-1">
-        {/* 할일 목록 - localTodos 사용 */}
         <DraggableFlatList
           data={localTodos}
           onDragEnd={handleReorderTodos}
@@ -195,10 +192,11 @@ export function TodoList({ activityId }: TodoListProps) {
             <TodoItem
               todo={item}
               onToggle={handleToggleTodo}
-              onDelete={handleDeleteTodo}
+              onDelete={handleStartDelete}
               onDragStart={drag}
               isActive={isActive}
               isEditing={editingTodoId === item.id}
+              isPendingDelete={pendingDeleteIds.includes(item.id)}
               editingText={editingText}
               onStartEdit={() => handleStartEdit(item)}
               onFinishEdit={handleFinishEdit}
@@ -209,13 +207,30 @@ export function TodoList({ activityId }: TodoListProps) {
           )}
         />
 
-        {/* 플로팅 추가 버튼 */}
-        <StyledTouchableOpacity
-          className="absolute right-4 bottom-4 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
-          onPress={handleStartAddTodo}
-        >
-          <Ionicons name="add" size={32} color="white" />
-        </StyledTouchableOpacity>
+        {/* 플로팅 버튼 */}
+        {pendingDeleteIds.length > 0 ? (
+          <StyledView className="absolute right-4 bottom-4 flex-row">
+            <StyledTouchableOpacity
+              className="w-14 h-14 bg-red-500 rounded-full items-center justify-center shadow-lg mr-2"
+              onPress={handleConfirmDelete}
+            >
+              <Ionicons name="trash" size={32} color="white" />
+            </StyledTouchableOpacity>
+            <StyledTouchableOpacity
+              className="w-14 h-14 bg-gray-500 rounded-full items-center justify-center shadow-lg"
+              onPress={handleCancelDelete}
+            >
+              <Ionicons name="close" size={32} color="white" />
+            </StyledTouchableOpacity>
+          </StyledView>
+        ) : (
+          <StyledTouchableOpacity
+            className="absolute right-4 bottom-4 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
+            onPress={handleStartAddTodo}
+          >
+            <Ionicons name="add" size={32} color="white" />
+          </StyledTouchableOpacity>
+        )}
       </StyledView>
     </GestureHandlerRootView>
   );

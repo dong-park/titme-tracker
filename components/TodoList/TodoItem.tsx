@@ -16,6 +16,7 @@ export interface TodoItemProps {
   onDragStart: () => void;
   isActive: boolean;
   isEditing: boolean;
+  isPendingDelete: boolean;
   editingText: string;
   onStartEdit: () => void;
   onFinishEdit: () => void;
@@ -31,6 +32,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   onDragStart,
   isActive,
   isEditing,
+  isPendingDelete,
   editingText,
   onStartEdit,
   onFinishEdit,
@@ -40,9 +42,11 @@ const TodoItem: React.FC<TodoItemProps> = ({
 }) => {
   return (
     <StyledTouchableOpacity
-      className={`flex-row items-center p-4 bg-white border-b border-gray-200 ${isActive ? 'bg-gray-50' : ''}`}
+      className={`flex-row items-center p-4 bg-white border-b border-gray-200 ${
+        isActive ? 'bg-gray-50' : ''
+      } ${isPendingDelete ? 'bg-red-50' : ''}`}
       onLongPress={onDragStart}
-      onPress={onStartEdit}
+      onPress={!isPendingDelete ? onStartEdit : undefined}
     >
       <StyledTouchableOpacity
         className="mr-3"
@@ -77,18 +81,22 @@ const TodoItem: React.FC<TodoItemProps> = ({
         </StyledView>
       ) : (
         <StyledText
-          className={`flex-1 text-base ${todo.completed ? 'line-through text-gray-400' : ''}`}
+          className={`flex-1 text-base ${
+            todo.completed ? 'line-through text-gray-400' : ''
+          } ${isPendingDelete ? 'text-red-500' : ''}`}
         >
           {todo.text || '할일을 입력하세요'}
         </StyledText>
       )}
 
-      <StyledTouchableOpacity
-        className="ml-3"
-        onPress={() => onDelete(todo.id)}
-      >
-        <Ionicons name="trash-outline" size={20} color="#666" />
-      </StyledTouchableOpacity>
+      {!isPendingDelete && (
+        <StyledTouchableOpacity
+          className="ml-3"
+          onPress={() => onDelete(todo.id)}
+        >
+          <Ionicons name="trash-outline" size={20} color="#666" />
+        </StyledTouchableOpacity>
+      )}
     </StyledTouchableOpacity>
   );
 };
