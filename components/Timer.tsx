@@ -45,7 +45,7 @@ export function Timer() {
     const [lastMilestoneTime, setLastMilestoneTime] = useState(0);
     const timerInterval = useRef<number | NodeJS.Timeout | null>(null);
     const [timerScale] = useState(new Animated.Value(1));
-    const [slideAnim] = useState(new Animated.Value(-500));
+    const [slideAnim] = useState(new Animated.Value(100));
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandAnim] = useState(new Animated.Value(0));
     const {description, emoji, startTime} = activityState.trackingActivity || {};
@@ -55,7 +55,7 @@ export function Timer() {
 
     const handleStopTracking = useCallback(() => {
         Animated.timing(slideAnim, {
-            toValue: 500,
+            toValue: 100,
             duration: 750,
             useNativeDriver: true
         }).start(() => {
@@ -66,7 +66,7 @@ export function Timer() {
                 setDisplayedElapsedTime(0);
                 setMilestone("집중 시작!");
                 setLastMilestoneTime(0);
-                slideAnim.setValue(0);
+                slideAnim.setValue(100);
 
                 // 포모도로 타이머도 초기화
                 dispatch(resetAll());
@@ -82,24 +82,24 @@ export function Timer() {
     // 마일스톤 메시지 생성 함수
     const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
         // 처음 시작할 때
-        if (seconds < 60) return "집중 시작!";
+        if (seconds < 60) return "안녕하세요! 저와 함께 집중해볼까요? 💫";
 
         // 마일스톤 달성 시점 (5분, 10분, 15분, 30분, 45분, 1시간, 1시간 30분, 2시간...)
         const minutes = Math.floor(seconds / 60);
 
-        if (minutes === 5 && lastMilestone < 5 * 60) return "5분 달성! 좋은 출발이에요";
-        if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 계속 집중하세요";
-        if (minutes === 15 && lastMilestone < 15 * 60) return "15분 달성! 잘 하고 있어요";
-        if (minutes === 30 && lastMilestone < 30 * 60) return "30분 달성! 대단해요";
-        if (minutes === 45 && lastMilestone < 45 * 60) return "45분 달성! 끝까지 화이팅!";
+        if (minutes === 5 && lastMilestone < 5 * 60) return "우와! 벌써 5분이나 집중했어요! 👏";
+        if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 저랑 잘 맞는 것 같아요~ 🌟";
+        if (minutes === 15 && lastMilestone < 15 * 60) return "15분이에요! 집중력이 대단한걸요? ✨";
+        if (minutes === 30 && lastMilestone < 30 * 60) return "30분 달성! 절반을 향해 가고 있어요! 💪";
+        if (minutes === 45 && lastMilestone < 45 * 60) return "45분! 이제 곧 1시간이에요! 힘내요~ 🎯";
 
-        if (minutes === 60 && lastMilestone < 60 * 60) return "1시간 달성! 놀라운 집중력이에요";
-        if (minutes === 90 && lastMilestone < 90 * 60) return "1시간 30분! 정말 대단해요";
-        if (minutes === 120 && lastMilestone < 120 * 60) return "2시간 달성! 프로 집중러!";
+        if (minutes === 60 && lastMilestone < 60 * 60) return "1시간 달성! 정말 자랑스러워요! 🎉";
+        if (minutes === 90 && lastMilestone < 90 * 60) return "1시간 30분! 오늘 컨디션이 최고네요! 🌈";
+        if (minutes === 120 && lastMilestone < 120 * 60) return "2시간이나 집중했어요! 당신은 진정한 프로에요! 🏆";
 
         // 30분 단위로 계속 마일스톤 제공
         if (minutes % 30 === 0 && lastMilestone < minutes * 60)
-            return `${minutes}분 달성! 믿기지 않는 집중력!`;
+            return `${minutes}분 달성! 믿을 수 없는 집중력이에요! 🌟`;
 
         // 마일스톤 사이의 메시지
         return milestone; // 기존 메시지 유지

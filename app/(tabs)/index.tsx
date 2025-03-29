@@ -18,6 +18,7 @@ export default function App() {
 
 const StyledSafeAreaView = styled(SafeAreaView);
 const StyledScrollView = styled(ScrollView);
+const StyledView = styled(View);
 
 function Root() {
     const activityState = useSelector((state: RootState) => state.activity);
@@ -28,14 +29,11 @@ function Root() {
                 <StyledScrollView
                     className="flex-1"
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{ 
+                    contentContainerStyle={{
                         flexGrow: 1,
                         paddingBottom: 20
                     }}
                 >
-                    {activityState.isTracking && (
-                        <Timer />
-                    )}
                     <Activities/>
                     
                     <TimeTracker 
@@ -44,12 +42,18 @@ function Root() {
                         date={new Date()} 
                     />
                 </StyledScrollView>
+                
+                {/* Timer를 fixed 위치로 변경 */}
+                {activityState.isTracking && (
+                    <StyledView className="absolute bottom-6 right-4 z-50">
+                        <Timer />
+                    </StyledView>
+                )}
             </ElapsedTimeProvider>
         </StyledSafeAreaView>
     )
 }
 
-const StyledView = styled(View);
 const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
 

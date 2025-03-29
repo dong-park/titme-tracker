@@ -65,47 +65,93 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     };
 
     return (
-        <StyledTouchableOpacity
-            className="active:opacity-80"
-            onPress={navigateToFocusPage}
-        >
-            <StyledAnimatedView
-                className="bg-white p-4 mx-4 rounded-lg my-2.5 shadow-sm"
-                style={{transform: [{translateX: slideAnim}]}}
+        <StyledView className="relative">
+            {/* 말풍선 */}
+            {milestone && (
+                <StyledAnimatedView
+                    className="bg-[#4B7BF5] rounded-xl px-6 py-3 mb-2"
+                    style={{
+                        transform: [{translateY: slideAnim}, {scale: timerScale}],
+                        position: 'absolute',
+                        bottom: 70,
+                        right: 0,
+                        width: 'auto',
+                        minWidth: 200,
+                        maxWidth: 400,
+                        marginLeft: 24,
+                        shadowColor: "#000",
+                        shadowOffset: {
+                            width: 0,
+                            height: 2,
+                        },
+                        shadowOpacity: 0.1,
+                        shadowRadius: 3,
+                        elevation: 3,
+                        zIndex: 1,
+                        alignSelf: 'flex-end'
+                    }}
+                >
+                    <StyledAnimatedText
+                        className="text-white text-base font-medium"
+                        style={{
+                            transform: [{scale: timerScale}]
+                        }}
+                    >
+                        {milestone}
+                    </StyledAnimatedText>
+                    {/* 말풍선 꼬리 */}
+                    <StyledView
+                        className="absolute bottom-[-6px] right-[28px] w-0 h-0"
+                        style={{
+                            borderLeftWidth: 6,
+                            borderRightWidth: 6,
+                            borderTopWidth: 6,
+                            borderStyle: 'solid',
+                            backgroundColor: 'transparent',
+                            borderLeftColor: 'transparent',
+                            borderRightColor: 'transparent',
+                            borderTopColor: '#4B7BF5'
+                        }}
+                    />
+                </StyledAnimatedView>
+            )}
+
+            {/* 타이머 버튼 */}
+            <StyledTouchableOpacity
+                className="active:opacity-80"
+                onPress={navigateToFocusPage}
             >
-                {/* 메인 컨텐츠 - 두근두근 효과 유지 */}
-                <StyledView className="flex-row items-center justify-between">
-                    <StyledText className="text-3xl w-[15%] text-center" numberOfLines={1}>
-                        {emoji}
-                    </StyledText>
-                    <StyledView className="w-[85%] items-center">
-                        <StyledAnimatedText
-                            className="text-lg text-slate-800 font-medium text-center"
-                            style={{transform: [{scale: timerScale}]}}  // 두근두근 효과 유지
-                        >
-                            {milestone}
-                        </StyledAnimatedText>
+                <StyledAnimatedView
+                    className="bg-white rounded-full shadow-lg"
+                    style={{
+                        transform: [{translateY: slideAnim}, {scale: timerScale}],
+                        width: 60,
+                        height: 60,
+                        padding: 12,
+                        shadowColor: "#000",
+                        shadowOffset: {
+                            width: 0,
+                            height: 4,
+                        },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 5,
+                        elevation: 5
+                    }}
+                >
+                    <StyledView className="flex-1 items-center justify-center">
+                        <StyledText className="text-xl" numberOfLines={1}>
+                            {emoji}
+                        </StyledText>
                     </StyledView>
-                </StyledView>
 
-                {/* 집중 페이지 이동 버튼 */}
-                <StyledTouchableOpacity
-                    className="w-full items-center mt-2"
-                    onPress={navigateToFocusPage}
-                >
-                    {/* <StyledView className="bg-blue-100 rounded-full py-1.5 px-4 flex-row items-center">
-                        <StyledText className="text-blue-600 text-sm font-medium mr-1">집중 페이지로 이동</StyledText>
-                        <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
-                    </StyledView> */}
-                </StyledTouchableOpacity>
-
-                <StyledTouchableOpacity
-                    className="absolute top-2 right-0 p-1.5 rounded-full z-10"
-                    onPress={handleStopTracking}
-                >
-                    <Ionicons name="close-circle" size={22} color="#FF5A5F" />
-                </StyledTouchableOpacity>
-            </StyledAnimatedView>
-        </StyledTouchableOpacity>
+                    <StyledTouchableOpacity
+                        className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full z-10"
+                        onPress={handleStopTracking}
+                    >
+                        <Ionicons name="close-circle" size={16} color="#FF5A5F" />
+                    </StyledTouchableOpacity>
+                </StyledAnimatedView>
+            </StyledTouchableOpacity>
+        </StyledView>
     );
 };
