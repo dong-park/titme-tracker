@@ -43,10 +43,11 @@ const TodoItem: React.FC<TodoItemProps> = ({
   return (
     <StyledTouchableOpacity
       className={`flex-row items-center p-4 bg-white border-b border-gray-200 ${
-        isActive ? 'bg-gray-50' : ''
+        isActive ? 'bg-blue-50 shadow-md -translate-y-1' : ''
       } ${isPendingDelete ? 'bg-red-50' : ''}`}
       onLongPress={onDragStart}
       onPress={!isPendingDelete ? onStartEdit : undefined}
+      delayLongPress={200}
     >
       <StyledTouchableOpacity
         className="mr-3"
