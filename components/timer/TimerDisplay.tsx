@@ -93,10 +93,10 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                     className="w-full items-center mt-2"
                     onPress={navigateToFocusPage}
                 >
-                    <StyledView className="bg-blue-100 rounded-full py-1.5 px-4 flex-row items-center">
+                    {/* <StyledView className="bg-blue-100 rounded-full py-1.5 px-4 flex-row items-center">
                         <StyledText className="text-blue-600 text-sm font-medium mr-1">집중 페이지로 이동</StyledText>
                         <Ionicons name="chevron-forward" size={16} color="#3B82F6" />
-                    </StyledView>
+                    </StyledView> */}
                 </StyledTouchableOpacity>
 
                 <StyledTouchableOpacity

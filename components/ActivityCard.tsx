@@ -124,14 +124,14 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
                             <Text className="text-base font-semibold" numberOfLines={1}>{activity.name}</Text>
                             
                             {/* 기능 아이콘 표시 */}
-                            <View className="flex-row mt-1">
+                            {/* <View className="flex-row mt-1">
                                 {activity.pomodoroEnabled && (
                                     <Ionicons name="timer-outline" size={14} color="#666" style={{ marginRight: 4 }} />
                                 )}
                                 {activity.todoListEnabled && (
                                     <Ionicons name="list-outline" size={14} color="#666" />
                                 )}
-                            </View>
+                            </View> */}
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
