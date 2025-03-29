@@ -1,5 +1,5 @@
 import { TextInput } from 'react-native';
-import { TodoItem as TodoItemType, TodoCategory as TodoCategoryType } from '@/store/todoSlice';
+import { TodoItem as TodoItemType } from '@/store/todoSlice';
 
 // 컴포넌트 props 타입 정의
 export interface TodoListProps {
@@ -11,12 +11,8 @@ export interface TodoItemProps {
   todo: TodoItemType;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
-  drag?: () => void;
-  isActive?: boolean;
-  onLongPress?: () => void;
-  onDragStart?: () => void;
-  isHighlighted?: boolean;
-  parentCategoryId?: number;
+  onDragStart: () => void;
+  isActive: boolean;
 }
 
 // 카테고리 컴포넌트 Props 인터페이스
