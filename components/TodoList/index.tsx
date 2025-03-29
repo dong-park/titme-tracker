@@ -92,6 +92,11 @@ export function TodoList({ activityId }: TodoListProps) {
   
   // 할일 삭제 대기 상태로 변경
   const handleStartDelete = (todoId: string) => {
+    // 편집 모드인 경우 편집 모드 종료
+    if (editingTodoId === todoId) {
+      setEditingTodoId(null);
+      setEditingText('');
+    }
     setPendingDeleteIds(prev => [...prev, todoId]);
   };
 
