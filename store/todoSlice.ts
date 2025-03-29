@@ -23,15 +23,15 @@ export const todoSlice = createSlice({
   name: 'todos',
   initialState,
   reducers: {
-    addTodo: (state, action: PayloadAction<{ activityId: number; text: string }>) => {
-      const { activityId, text } = action.payload;
+    addTodo: (state, action: PayloadAction<{ activityId: number; text: string; id?: string }>) => {
+      const { activityId, text, id } = action.payload;
       
       if (!state.todosByActivity[activityId]) {
         state.todosByActivity[activityId] = [];
       }
       
       state.todosByActivity[activityId].unshift({
-        id: uuidv4(),
+        id: id || uuidv4(),
         text,
         completed: false,
         date: new Date().toISOString(),

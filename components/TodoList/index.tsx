@@ -65,18 +65,19 @@ export function TodoList({ activityId }: TodoListProps) {
       date: new Date().toISOString(),
     };
     
+    // Redux 상태 업데이트
+    dispatch(addTodo({
+      activityId,
+      text: '',
+      id: newTodoId
+    }));
+    
     // 로컬 상태에 빈 할일 추가 (최상단에)
     setLocalTodos([newTodo, ...localTodos]);
     
     // 편집 모드 활성화
     setEditingTodoId(newTodoId);
     setEditingText('');
-    
-    // Redux 상태 업데이트
-    dispatch(addTodo({
-      activityId,
-      text: ''
-    }));
     
     // 포커스 설정을 위한 지연
     requestAnimationFrame(() => {
