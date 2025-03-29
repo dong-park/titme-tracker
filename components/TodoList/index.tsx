@@ -43,10 +43,12 @@ export function TodoList({ activityId }: TodoListProps) {
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const editInputRef = useRef<TextInput>(null);
   
-  // todos가 변경될 때 localTodos 업데이트
+  // todos가 변경될 때 localTodos 업데이트 (editingTodoId가 null일 때만)
   useEffect(() => {
-    setLocalTodos(todos);
-  }, [todos]);
+    if (editingTodoId === null) {
+      setLocalTodos(todos);
+    }
+  }, [todos, editingTodoId]);
 
   // 컴포넌트 마운트 시 활동 초기화
   useEffect(() => {
@@ -66,20 +68,20 @@ export function TodoList({ activityId }: TodoListProps) {
     // 로컬 상태에 빈 할일 추가 (최상단에)
     setLocalTodos([newTodo, ...localTodos]);
     
+    // 편집 모드 활성화
+    setEditingTodoId(newTodoId);
+    setEditingText('');
+    
     // Redux 상태 업데이트
     dispatch(addTodo({
       activityId,
       text: ''
     }));
     
-    // 편집 모드 활성화
-    setEditingTodoId(newTodoId);
-    setEditingText('');
-    
     // 포커스 설정을 위한 지연
-    setTimeout(() => {
+    requestAnimationFrame(() => {
       editInputRef.current?.focus();
-    }, 100);
+    });
   };
   
   // 할일 완료/미완료 토글
@@ -149,7 +151,10 @@ export function TodoList({ activityId }: TodoListProps) {
   const handleFinishEdit = () => {
     if (!editingTodoId) return;
     
-    if (editingText.trim() === '') {
+    // 새로 추가된 할일인 경우 (빈 텍스트 허용)
+    const isNewTodo = localTodos.find(todo => todo.id === editingTodoId)?.text === '';
+    
+    if (!isNewTodo && editingText.trim() === '') {
       // 빈 텍스트인 경우 할일 삭제
       dispatch(deleteTodo({
         activityId,
