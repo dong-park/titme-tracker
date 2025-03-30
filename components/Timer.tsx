@@ -46,7 +46,7 @@ export function Timer() {
     const [lastMilestoneTime, setLastMilestoneTime] = useState(0);
     const timerInterval = useRef<number | NodeJS.Timeout | null>(null);
     const [timerScale] = useState(new Animated.Value(1));
-    const [slideAnim] = useState(new Animated.Value(100));
+    const [slideAnim] = useState(new Animated.Value(0));
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandAnim] = useState(new Animated.Value(0));
     const [isMilestoneVisible, setIsMilestoneVisible] = useState(false);
@@ -57,25 +57,18 @@ export function Timer() {
     const currentActivityId = useSelector(selectCurrentActivityId);
 
     const handleStopTracking = useCallback(() => {
-        Animated.timing(slideAnim, {
-            toValue: 100,
-            duration: 750,
-            useNativeDriver: true
-        }).start(() => {
-            if (activityState.trackingActivity) {
-                dispatch(stopTracking());
-                Vibration.vibrate(500);
-                localElapsedTimeRef.current = 0;
-                setDisplayedElapsedTime(0);
-                setMilestone("집중 시작!");
-                setLastMilestoneTime(0);
-                slideAnim.setValue(100);
+        if (activityState.trackingActivity) {
+            dispatch(stopTracking());
+            Vibration.vibrate(500);
+            localElapsedTimeRef.current = 0;
+            setDisplayedElapsedTime(0);
+            setMilestone("집중 시작!");
+            setLastMilestoneTime(0);
 
-                // 포모도로 타이머도 초기화
-                dispatch(resetAll());
-            }
-        });
-    }, [activityState.trackingActivity, dispatch, localElapsedTimeRef, slideAnim]);
+            // 포모도로 타이머도 초기화
+            dispatch(resetAll());
+        }
+    }, [activityState.trackingActivity, dispatch, localElapsedTimeRef]);
 
     const togglePomodoroTimer = useCallback(() => {
         // 더 이상 사용하지 않음
@@ -193,14 +186,6 @@ export function Timer() {
             dispatch(setActivityElapsedTime(localElapsedTimeRef.current));
         }
     }, [isTracking, dispatch, localElapsedTimeRef]);
-
-    useEffect(() => {
-        Animated.timing(slideAnim, {
-            toValue: 0,
-            duration: 750,
-            useNativeDriver: true
-        }).start();
-    }, [slideAnim]);
 
     useEffect(() => {
         if (isExpanded) {
