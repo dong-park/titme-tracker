@@ -1,15 +1,15 @@
 // Timer.tsx - 모듈화된 버전
-import {Animated, TouchableOpacity, Vibration, View} from "react-native";
-import React, {useEffect, useRef, useState, useMemo, useCallback} from "react";
-import {useDispatch, useSelector} from "react-redux";
-import {RootState} from "@/store/store";
-import {setElapsedTime as setActivityElapsedTime, stopTracking} from "@/store/activitySlice";
-import {useElapsedTime} from "@/components/ElapsedTimeContext";
-import {styled} from "nativewind";
-import {TimerDisplay} from "./timer/TimerDisplay";
-import {resetAll} from "@/store/pomodoroSlice";
-import {GestureHandlerRootView} from "react-native-gesture-handler";
+import { useElapsedTime } from "@/components/ElapsedTimeContext";
+import { setElapsedTime as setActivityElapsedTime, stopTracking } from "@/store/activitySlice";
+import { resetAll } from "@/store/pomodoroSlice";
+import { RootState } from "@/store/store";
 import { createSelector } from '@reduxjs/toolkit';
+import { styled } from "nativewind";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Animated, TouchableOpacity, Vibration, View } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { useDispatch, useSelector } from "react-redux";
+import { TimerDisplay } from "./timer/TimerDisplay";
 import { TimerUtils } from "./timer/TimerUtils";
 
 const StyledView = styled(View);
@@ -51,7 +51,7 @@ export function Timer() {
     const [expandAnim] = useState(new Animated.Value(0));
     const [isMilestoneVisible, setIsMilestoneVisible] = useState(false);
     const [milestoneOpacity] = useState(new Animated.Value(0));
-    const {description, emoji, startTime} = activityState.trackingActivity || {};
+    const {description, emoji, startDate, startTime} = activityState.trackingActivity || {};
     
     // 메모이제이션된 셀렉터 사용
     const currentActivityId = useSelector(selectCurrentActivityId);
@@ -182,10 +182,13 @@ export function Timer() {
     }, [isTracking, milestone, lastMilestoneTime, getMilestoneMessage, playMilestoneAnimation]);
 
     useEffect(() => {
-        if (isTracking) {
-            dispatch(setActivityElapsedTime(localElapsedTimeRef.current));
+        if (isTracking && startDate) {
+            const elapsedTime = new Date().getTime() - new Date(startDate).getTime();
+            const seconds = Math.floor(elapsedTime / 1000);
+            dispatch(setActivityElapsedTime(seconds));
+            localElapsedTimeRef.current = seconds;
         }
-    }, [isTracking, dispatch, localElapsedTimeRef]);
+    }, [isTracking, dispatch, localElapsedTimeRef, startDate]);
 
     useEffect(() => {
         if (isExpanded) {
