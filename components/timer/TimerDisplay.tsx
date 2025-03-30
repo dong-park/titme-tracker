@@ -1,12 +1,12 @@
 // components/timer/TimerDisplay.tsx (수정된 버전)
-import {Animated, Text, TouchableOpacity, View} from "react-native";
-import React, { useState, useMemo } from "react";
-import {styled} from "nativewind";
-import { Ionicons } from '@expo/vector-icons';
-import { useSelector } from "react-redux";
 import { RootState } from "@/store/store";
+import { Ionicons } from '@expo/vector-icons';
 import { createSelector } from '@reduxjs/toolkit';
 import { router } from 'expo-router';
+import { styled } from "nativewind";
+import React from "react";
+import { Animated, Text, TouchableOpacity, View } from "react-native";
+import { useSelector } from "react-redux";
 
 const StyledView = styled(View);
 const StyledText = styled(Text);
@@ -61,7 +61,10 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
     // 집중 페이지로 이동하는 함수
     const navigateToFocusPage = () => {
-        router.push('/focus');
+        router.push({
+            pathname: '/focus',
+            params: { initialElapsedTime: displayedElapsedTime }
+        });
     };
 
     return (

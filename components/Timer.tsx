@@ -82,11 +82,12 @@ export function Timer() {
     // 마일스톤 메시지 생성 함수
     const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
         // 처음 시작할 때
-        if (seconds < 60) return "안녕하세요! 저와 함께 집중해볼까요? 💫";
+        if (seconds < 10) return "안녕하세요! 저와 함께 집중해볼까요? 💫";
 
         // 마일스톤 달성 시점 (5분, 10분, 15분, 30분, 45분, 1시간, 1시간 30분, 2시간...)
         const minutes = Math.floor(seconds / 60);
 
+        if (minutes === 1 && lastMilestone < 1 * 60) return "우와! 벌써 1분이나 집중했어요! 👏";
         if (minutes === 5 && lastMilestone < 5 * 60) return "우와! 벌써 5분이나 집중했어요! 👏";
         if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 저랑 잘 맞는 것 같아요~ 🌟";
         if (minutes === 15 && lastMilestone < 15 * 60) return "15분이에요! 집중력이 대단한걸요? ✨";

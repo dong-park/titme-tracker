@@ -4,7 +4,7 @@ import { useSelector, Provider, useDispatch } from 'react-redux';
 import { RootState, store } from '@/store/store';
 import { styled } from 'nativewind';
 import { Ionicons } from '@expo/vector-icons';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { TodoList } from '@/components/TodoList';
 import { PomodoroTimer } from '@/components/timer/PomodoroTimer';
 import { ActivityHeatmap } from '../components/ActivityHeatmap';
@@ -41,12 +41,24 @@ function FocusPage() {
   const isTracking = useSelector((state: RootState) => state.activity?.isTracking);
   const elapsedTime = useSelector((state: RootState) => state.activity?.elapsedTime || 0);
   const {localElapsedTimeRef, setLocalElapsedTime} = useElapsedTime();
+  const { initialElapsedTime } = useLocalSearchParams<{ initialElapsedTime: string }>();
   
   const [activeIndex, setActiveIndex] = useState(0);
   const width = Dimensions.get('window').width;
   
   // 타이머 관련 상태
-  const [displayedElapsedTime, setDisplayedElapsedTime] = useState(elapsedTime);
+  const [displayedElapsedTime, setDisplayedElapsedTime] = useState(
+    initialElapsedTime ? parseInt(initialElapsedTime) : elapsedTime
+  );
+  
+  // initialElapsedTime이 있으면 localElapsedTimeRef도 같은 값으로 초기화
+  useEffect(() => {
+    if (initialElapsedTime) {
+      localElapsedTimeRef.current = parseInt(initialElapsedTime);
+      setDisplayedElapsedTime(localElapsedTimeRef.current);
+    }
+  }, [initialElapsedTime]);
+
   const [milestone, setMilestone] = useState("집중 시작!");
   const [lastMilestoneTime, setLastMilestoneTime] = useState(0);
   const timerInterval = useRef<number | NodeJS.Timeout | null>(null);
@@ -110,6 +122,7 @@ function FocusPage() {
     // 마일스톤 달성 시점 (5분, 10분, 15분, 30분, 45분, 1시간, 1시간 30분, 2시간...)
     const minutes = Math.floor(seconds / 60);
 
+    if (minutes === 1 && lastMilestone < 1 * 60) return "1분 달성! 좋은 출발이에요";
     if (minutes === 5 && lastMilestone < 5 * 60) return "5분 달성! 좋은 출발이에요";
     if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 계속 집중하세요";
     if (minutes === 15 && lastMilestone < 15 * 60) return "15분 달성! 잘 하고 있어요";
@@ -243,7 +256,7 @@ function FocusPage() {
             <StyledView className="items-center">
               <StyledText className="text-gray-500 text-sm">집중 시간</StyledText>
               <StyledText className="text-lg font-medium">
-                {formatElapsedTime(displayedElapsedTime)}
+                {formatElapsedTime(displayedElapsedTime)} 
               </StyledText>
             </StyledView>
             
