@@ -48,17 +48,38 @@ function FocusPage() {
   const width = Dimensions.get('window').width;
   
   // 타이머 관련 상태
-  const [displayedElapsedTime, setDisplayedElapsedTime] = useState(
-    initialElapsedTime ? parseInt(initialElapsedTime) : elapsedTime
-  );
+  const [displayedElapsedTime, setDisplayedElapsedTime] = useState(() => {
+    // 즉시 계산하여 초기값 설정
+    if (initialElapsedTime) {
+      return parseInt(initialElapsedTime);
+    }
+    
+    // startDate가 있으면 경과 시간 계산
+    if (trackingActivity?.startDate) {
+      const elapsed = new Date().getTime() - new Date(trackingActivity.startDate).getTime();
+      return Math.floor(elapsed / 1000);
+    }
+    
+    return elapsedTime || 0;
+  });
   
-  // initialElapsedTime이 있으면 localElapsedTimeRef도 같은 값으로 초기화
+  // initialElapsedTime 처리 로직 개선
   useEffect(() => {
     if (initialElapsedTime) {
-      localElapsedTimeRef.current = parseInt(initialElapsedTime);
-      setDisplayedElapsedTime(localElapsedTimeRef.current);
+      const parsedTime = parseInt(initialElapsedTime);
+      localElapsedTimeRef.current = parsedTime;
+      setDisplayedElapsedTime(parsedTime);
+      // 전역 상태도 즉시 업데이트
+      dispatch(setActivityElapsedTime(parsedTime));
+    } else if (trackingActivity?.startDate) {
+      // 시작 시간부터 현재까지 경과 시간 계산
+      const elapsed = new Date().getTime() - new Date(trackingActivity.startDate).getTime();
+      const seconds = Math.floor(elapsed / 1000);
+      localElapsedTimeRef.current = seconds;
+      setDisplayedElapsedTime(seconds);
+      dispatch(setActivityElapsedTime(seconds));
     }
-  }, [initialElapsedTime]);
+  }, []);
 
   const [milestone, setMilestone] = useState("집중 시작!");
   const [lastMilestoneTime, setLastMilestoneTime] = useState(0);

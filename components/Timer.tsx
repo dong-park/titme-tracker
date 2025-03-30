@@ -182,13 +182,20 @@ export function Timer() {
     }, [isTracking, milestone, lastMilestoneTime, getMilestoneMessage, playMilestoneAnimation]);
 
     useEffect(() => {
+        // startDate가 있으면 그 시점부터 현재까지 경과 시간 계산
         if (isTracking && startDate) {
-            const elapsedTime = new Date().getTime() - new Date(startDate).getTime();
-            const seconds = Math.floor(elapsedTime / 1000);
-            dispatch(setActivityElapsedTime(seconds));
+            const elapsed = new Date().getTime() - new Date(startDate).getTime();
+            const seconds = Math.floor(elapsed / 1000);
             localElapsedTimeRef.current = seconds;
+            setDisplayedElapsedTime(seconds);
+            dispatch(setActivityElapsedTime(seconds));
+        } 
+        // 전역 상태의 elapsedTime 사용
+        else if (elapsedTime > 0) {
+            localElapsedTimeRef.current = elapsedTime;
+            setDisplayedElapsedTime(elapsedTime);
         }
-    }, [isTracking, dispatch, localElapsedTimeRef, startDate]);
+    }, []);
 
     useEffect(() => {
         if (isExpanded) {
