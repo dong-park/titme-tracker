@@ -190,6 +190,7 @@ export function Activities() {
                                 onActivityPress={handleActivityPress}
                                 isEditMode={isEditMode}
                                 isTracking={activityState.isTracking && activityState.trackingActivity?.description === activity.name}
+                                anyActivityTracking={activityState.isTracking}
                             />
                         ))}
                     </View>
@@ -201,6 +202,7 @@ export function Activities() {
                                 onActivityPress={handleActivityPress}
                                 isEditMode={isEditMode}
                                 isTracking={activityState.isTracking && activityState.trackingActivity?.description === activity.name}
+                                anyActivityTracking={activityState.isTracking}
                             />
                         ))}
                     </View>

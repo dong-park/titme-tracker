@@ -6,6 +6,10 @@ import { HandlerStateChangeEvent } from "react-native-gesture-handler/lib/typesc
 import { MenuActivity } from "@/store/activitySlice";
 import { router } from "expo-router";
 import { Ionicons } from '@expo/vector-icons';
+import { Colors } from '@/constants/Colors';
+import { useColorScheme } from '@/hooks/useColorScheme';
+import { useSelector } from 'react-redux';
+import { RootState } from '@/store/store';
 
 export interface ActivityCardRef {
     resetAnimation: () => void;
@@ -16,15 +20,20 @@ interface ActivityCardProps {
     onActivityPress: (activity: MenuActivity) => void;
     isEditMode: boolean;
     isTracking?: boolean;
+    anyActivityTracking?: boolean;
 }
 
 export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
-    ({ activity, onActivityPress, isEditMode, isTracking }, ref) => {
+    ({ activity, onActivityPress, isEditMode, isTracking, anyActivityTracking }, ref) => {
         const progress = useSharedValue(0);
         const scale = useSharedValue(1);
         const opacity = useSharedValue(1);
         const isAnimating = useRef(false);
         const rotation = useSharedValue(0);
+        const colorScheme = useColorScheme();
+        const tintColor = Colors[colorScheme ?? 'light'].tint;
+        const backgroundColor = Colors[colorScheme ?? 'light'].background;
+        const inactiveColor = '#F2F2F7'; // iOS 기본 회색 배경
 
         useEffect(() => {
             if (isEditMode) {
@@ -119,24 +128,32 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
                                     onActivityPress(activity);
                                 }
                             }}
-                            className={`z-[1] p-[15px] items-center rounded-[11px] border-b border-b-[#e5e7eb] ${
-                                isTracking 
-                                    ? 'bg-[#E3F2FD] shadow-lg' 
-                                    : 'bg-white shadow-md'
-                            }`}
+                            style={{ 
+                                // 활성화된 카드는 항상 tintColor, 
+                                // 어떤 활동이라도 트래킹 중인 경우 비활성화된 카드는 회색,
+                                // 아무것도 트래킹하지 않는 경우 모든 카드는 흰색
+                                backgroundColor: isTracking 
+                                    ? tintColor 
+                                    : (anyActivityTracking ? inactiveColor : backgroundColor),
+                                borderRadius: 16,
+                                padding: 15,
+                                alignItems: 'center',
+                                shadowOffset: { width: 0, height: 1 },
+                                shadowOpacity: 0.2,
+                                shadowRadius: 2,
+                                elevation: 2
+                            }}
+                            className="z-[1]"
                         >
-                            <Text className="text-[28px] mb-[2px]" numberOfLines={1}>{activity.emoji}</Text>
-                            <Text className="text-base font-semibold" numberOfLines={1}>{activity.name}</Text>
-                            
-                            {/* 기능 아이콘 표시 */}
-                            {/* <View className="flex-row mt-1">
-                                {activity.pomodoroEnabled && (
-                                    <Ionicons name="timer-outline" size={14} color="#666" style={{ marginRight: 4 }} />
-                                )}
-                                {activity.todoListEnabled && (
-                                    <Ionicons name="list-outline" size={14} color="#666" />
-                                )}
-                            </View> */}
+                            <Text className="text-[28px] mb-[5px]" numberOfLines={1}>{activity.emoji}</Text>
+                            <Text 
+                                className={`text-sm font-medium ${
+                                    isTracking ? 'text-white' : 'text-[#8E8E93]'
+                                }`} 
+                                numberOfLines={1}
+                            >
+                                {activity.name}
+                            </Text>
                         </TouchableOpacity>
                     </Animated.View>
                 </View>
