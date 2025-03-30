@@ -15,10 +15,11 @@ interface ActivityCardProps {
     activity: MenuActivity;
     onActivityPress: (activity: MenuActivity) => void;
     isEditMode: boolean;
+    isTracking?: boolean;
 }
 
 export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
-    ({ activity, onActivityPress, isEditMode }, ref) => {
+    ({ activity, onActivityPress, isEditMode, isTracking }, ref) => {
         const progress = useSharedValue(0);
         const scale = useSharedValue(1);
         const opacity = useSharedValue(1);
@@ -93,7 +94,7 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
             >
                 <View className="mr-2">
                     <Animated.View
-                        className="w-[100px] h-[100px] rounded-[10px] overflow-hidden"
+                        className={`w-[100px] h-[100px] rounded-[10px] overflow-hidden`}
                         style={editAnimatedStyle}>
                         {!isEditMode && <Animated.View
                             className="z-[2] absolute left-0 top-0 w-[90px] h-[90px] rounded-[10px]"
@@ -118,7 +119,11 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
                                     onActivityPress(activity);
                                 }
                             }}
-                            className="z-[1] p-[15px] bg-white items-center rounded-[11px] border-b border-b-[#e5e7eb] shadow-md"
+                            className={`z-[1] p-[15px] items-center rounded-[11px] border-b border-b-[#e5e7eb] ${
+                                isTracking 
+                                    ? 'bg-[#E3F2FD] shadow-lg' 
+                                    : 'bg-white shadow-md'
+                            }`}
                         >
                             <Text className="text-[28px] mb-[2px]" numberOfLines={1}>{activity.emoji}</Text>
                             <Text className="text-base font-semibold" numberOfLines={1}>{activity.name}</Text>

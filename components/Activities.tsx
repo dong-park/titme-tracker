@@ -93,6 +93,15 @@ export function Activities() {
 
     const handleActivityPress = async (activity: MenuActivity) => {
         console.log('Activity pressed:', activity);
+        
+        // 현재 추적 중인 활동인지 확인
+        if (activityState.isTracking && activityState.trackingActivity?.description === activity.name) {
+            // 현재 추적 중인 활동을 다시 누르면 종료
+            await dispatch(stopTracking());
+            setLocalElapsedTime(0);
+            return;
+        }
+
         const currentStartTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 
         if (activityState.isTracking) {
@@ -180,6 +189,7 @@ export function Activities() {
                                 activity={activity}
                                 onActivityPress={handleActivityPress}
                                 isEditMode={isEditMode}
+                                isTracking={activityState.isTracking && activityState.trackingActivity?.description === activity.name}
                             />
                         ))}
                     </View>
@@ -190,6 +200,7 @@ export function Activities() {
                                 activity={activity}
                                 onActivityPress={handleActivityPress}
                                 isEditMode={isEditMode}
+                                isTracking={activityState.isTracking && activityState.trackingActivity?.description === activity.name}
                             />
                         ))}
                     </View>
