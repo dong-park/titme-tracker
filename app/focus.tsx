@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useRef, useCallback, ReactElement } from 'react';
-import { SafeAreaView, Text, View, ScrollView, TouchableOpacity, Animated, Vibration, Dimensions } from 'react-native';
-import { useSelector, Provider, useDispatch } from 'react-redux';
-import { RootState, store } from '@/store/store';
-import { styled } from 'nativewind';
-import { Ionicons } from '@expo/vector-icons';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { ElapsedTimeProvider, useElapsedTime } from '@/components/ElapsedTimeContext';
 import { TodoList } from '@/components/TodoList';
 import { PomodoroTimer } from '@/components/timer/PomodoroTimer';
-import { ActivityHeatmap } from '../components/ActivityHeatmap';
-import { ElapsedTimeProvider, useElapsedTime } from '@/components/ElapsedTimeContext';
+import { TimerUtils } from '@/components/timer/TimerUtils';
 import { setElapsedTime as setActivityElapsedTime, stopTracking } from '@/store/activitySlice';
 import { resetAll } from '@/store/pomodoroSlice';
+import { RootState, store } from '@/store/store';
+import { Ionicons } from '@expo/vector-icons';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { styled } from 'nativewind';
+import React, { ReactElement, useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Dimensions, SafeAreaView, ScrollView, Text, TouchableOpacity, Vibration, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import Carousel from 'react-native-reanimated-carousel';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Provider, useDispatch, useSelector } from 'react-redux';
+import { ActivityHeatmap } from '../components/ActivityHeatmap';
 
 const StyledSafeAreaView = styled(SafeAreaView);
 const StyledScrollView = styled(ScrollView);
@@ -85,10 +86,7 @@ function FocusPage() {
   
   // 경과 시간 포맷팅
   const formatElapsedTime = useCallback((seconds: number) => {
-    const hrs = Math.floor(seconds / 3600);
-    const mins = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
-    return `${hrs > 0 ? `${hrs}시간 ` : ''}${mins > 0 ? `${mins}분 ` : ''}${secs}초`;
+    return TimerUtils.formatElapsedTime(seconds);
   }, []);
   
   // 활동 시작 시간 포맷팅
@@ -104,41 +102,12 @@ function FocusPage() {
   
   // 동기 부여 메시지 생성
   const getMotivationalMessage = () => {
-    const elapsedMinutes = Math.floor(trackingActivity?.elapsedTime || 0) / 60;
-    
-    if (elapsedMinutes < 5) return '집중을 시작했어요! 화이팅!';
-    if (elapsedMinutes < 15) return '좋은 출발이에요. 계속 집중해보세요!';
-    if (elapsedMinutes < 30) return '훌륭해요! 집중력이 대단합니다.';
-    if (elapsedMinutes < 60) return '놀라운 집중력이에요! 절반을 지났어요.';
-    if (elapsedMinutes < 90) return '1시간 이상 집중하다니 정말 대단해요!';
-    return '믿기지 않는 집중력! 당신은 진정한 프로입니다.';
+    return TimerUtils.getMotivationalMessage(trackingActivity?.elapsedTime || 0);
   };
   
   // 마일스톤 메시지 생성 함수
   const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
-    // 처음 시작할 때
-    if (seconds < 60) return "집중 시작!";
-
-    // 마일스톤 달성 시점 (5분, 10분, 15분, 30분, 45분, 1시간, 1시간 30분, 2시간...)
-    const minutes = Math.floor(seconds / 60);
-
-    if (minutes === 1 && lastMilestone < 1 * 60) return "1분 달성! 좋은 출발이에요";
-    if (minutes === 5 && lastMilestone < 5 * 60) return "5분 달성! 좋은 출발이에요";
-    if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 계속 집중하세요";
-    if (minutes === 15 && lastMilestone < 15 * 60) return "15분 달성! 잘 하고 있어요";
-    if (minutes === 30 && lastMilestone < 30 * 60) return "30분 달성! 대단해요";
-    if (minutes === 45 && lastMilestone < 45 * 60) return "45분 달성! 끝까지 화이팅!";
-
-    if (minutes === 60 && lastMilestone < 60 * 60) return "1시간 달성! 놀라운 집중력이에요";
-    if (minutes === 90 && lastMilestone < 90 * 60) return "1시간 30분! 정말 대단해요";
-    if (minutes === 120 && lastMilestone < 120 * 60) return "2시간 달성! 프로 집중러!";
-
-    // 30분 단위로 계속 마일스톤 제공
-    if (minutes % 30 === 0 && lastMilestone < minutes * 60)
-      return `${minutes}분 달성! 믿기지 않는 집중력!`;
-
-    // 마일스톤 사이의 메시지
-    return milestone; // 기존 메시지 유지
+    return TimerUtils.getMilestoneMessage(seconds, lastMilestone, milestone, true);
   }, [milestone]);
   
   const handleStopTracking = useCallback(() => {
@@ -201,12 +170,27 @@ function FocusPage() {
 
   useEffect(() => {
     if (isTracking) {
-      Animated.loop(
+      const pulseAnimation = Animated.loop(
         Animated.sequence([
-          Animated.timing(timerScale, {toValue: 1.05, duration: 1000, useNativeDriver: true}),
-          Animated.timing(timerScale, {toValue: 1, duration: 1000, useNativeDriver: true}),
+          Animated.timing(timerScale, {
+            toValue: 1.05,
+            duration: 1000,
+            useNativeDriver: true
+          }),
+          Animated.timing(timerScale, {
+            toValue: 1,
+            duration: 1000,
+            useNativeDriver: true
+          })
         ])
-      ).start();
+      );
+
+      pulseAnimation.start();
+
+      return () => {
+        pulseAnimation.stop();
+        timerScale.setValue(1);
+      };
     } else {
       timerScale.setValue(1);
     }
@@ -232,17 +216,12 @@ function FocusPage() {
     <StyledView key="overview" className="flex-1 px-4">
       {/* 타이머 디스플레이 */}
       <StyledView className="bg-white p-5 rounded-xl shadow-sm mt-4">
-        <StyledView className="items-center mb-4">
+        <StyledView className="items-center mb-3">
           <StyledText className="text-5xl mb-2">{trackingActivity.emoji}</StyledText>
-          <StyledAnimatedText
-            className="text-2xl font-bold text-gray-800 text-center"
-            style={{transform: [{scale: timerScale}]}}
-          >
-            {milestone}
-          </StyledAnimatedText>
+          <StyledText className="text-2xl mb-2">{trackingActivity.description}</StyledText>
         </StyledView>
         
-        <StyledView className="mt-4">
+        <StyledView>
           <StyledText className="text-center text-lg text-blue-600 font-medium">
             {getMotivationalMessage()}
           </StyledText>

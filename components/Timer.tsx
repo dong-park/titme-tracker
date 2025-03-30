@@ -10,6 +10,7 @@ import {TimerDisplay} from "./timer/TimerDisplay";
 import {resetAll} from "@/store/pomodoroSlice";
 import {GestureHandlerRootView} from "react-native-gesture-handler";
 import { createSelector } from '@reduxjs/toolkit';
+import { TimerUtils } from "./timer/TimerUtils";
 
 const StyledView = styled(View);
 const StyledTouchableOpacity = styled(TouchableOpacity);
@@ -81,40 +82,65 @@ export function Timer() {
 
     // 마일스톤 메시지 생성 함수
     const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
-        // 처음 시작할 때
-        if (seconds < 10) return "안녕하세요! 저와 함께 집중해볼까요? 💫";
-
-        // 마일스톤 달성 시점 (5분, 10분, 15분, 30분, 45분, 1시간, 1시간 30분, 2시간...)
-        const minutes = Math.floor(seconds / 60);
-
-        if (minutes === 1 && lastMilestone < 1 * 60) return "우와! 벌써 1분이나 집중했어요! 👏";
-        if (minutes === 5 && lastMilestone < 5 * 60) return "우와! 벌써 5분이나 집중했어요! 👏";
-        if (minutes === 10 && lastMilestone < 10 * 60) return "10분 달성! 저랑 잘 맞는 것 같아요~ 🌟";
-        if (minutes === 15 && lastMilestone < 15 * 60) return "15분이에요! 집중력이 대단한걸요? ✨";
-        if (minutes === 30 && lastMilestone < 30 * 60) return "30분 달성! 절반을 향해 가고 있어요! 💪";
-        if (minutes === 45 && lastMilestone < 45 * 60) return "45분! 이제 곧 1시간이에요! 힘내요~ 🎯";
-
-        if (minutes === 60 && lastMilestone < 60 * 60) return "1시간 달성! 정말 자랑스러워요! 🎉";
-        if (minutes === 90 && lastMilestone < 90 * 60) return "1시간 30분! 오늘 컨디션이 최고네요! 🌈";
-        if (minutes === 120 && lastMilestone < 120 * 60) return "2시간이나 집중했어요! 당신은 진정한 프로에요! 🏆";
-
-        // 30분 단위로 계속 마일스톤 제공
-        if (minutes % 30 === 0 && lastMilestone < minutes * 60)
-            return `${minutes}분 달성! 믿을 수 없는 집중력이에요! 🌟`;
-
-        // 마일스톤 사이의 메시지
-        return milestone; // 기존 메시지 유지
+        return TimerUtils.getMilestoneMessage(seconds, lastMilestone, milestone, false);
     }, [milestone]);
 
     // 시간 형식 함수
     const formatElapsedTime = useCallback((seconds: number) => {
-        const hrs = Math.floor(seconds / 3600);
-        const mins = Math.floor((seconds % 3600) / 60);
-        const secs = seconds % 60;
-        return `${hrs > 0 ? `${hrs}시간 ` : ''} ${mins > 0 ? `${mins}분` : ''} ${secs}초`;
+        return TimerUtils.formatElapsedTime(seconds);
     }, []);
 
     // 일반 타이머 흐르게하는 useEffect
+    useEffect(() => {
+        if (isTracking) {
+            const pulseAnimation = Animated.loop(
+                Animated.sequence([
+                    Animated.timing(timerScale, {
+                        toValue: 1.02,
+                        duration: 1000,
+                        useNativeDriver: true
+                    }),
+                    Animated.timing(timerScale, {
+                        toValue: 1,
+                        duration: 1000,
+                        useNativeDriver: true
+                    })
+                ])
+            );
+
+            // 기존 애니메이션 중지
+            timerScale.stopAnimation();
+            // 새로운 애니메이션 시작
+            pulseAnimation.start();
+
+            return () => {
+                pulseAnimation.stop();
+                timerScale.setValue(1);
+            };
+        } else {
+            timerScale.setValue(1);
+        }
+    }, [isTracking, timerScale]);
+
+    // 마일스톤 달성 애니메이션을 위한 별도의 scale 값
+    const milestoneScale = useRef(new Animated.Value(1)).current;
+
+    // 마일스톤 애니메이션 수정
+    const playMilestoneAnimation = useCallback(() => {
+        Animated.sequence([
+            Animated.timing(milestoneScale, {
+                toValue: 1.2,
+                duration: 200,
+                useNativeDriver: true
+            }),
+            Animated.timing(milestoneScale, {
+                toValue: 1,
+                duration: 200,
+                useNativeDriver: true
+            })
+        ]).start();
+    }, [milestoneScale]);
+
     useEffect(() => {
         if (isTracking) {
             timerInterval.current = setInterval(() => {
@@ -126,15 +152,8 @@ export function Timer() {
                 if (newMilestone !== milestone) {
                     setMilestone(newMilestone);
                     setLastMilestoneTime(localElapsedTimeRef.current);
-
-                    // 새 마일스톤 달성 시 진동 피드백 (선택적)
                     Vibration.vibrate(100);
-
-                    // 마일스톤 달성 시 애니메이션 효과
-                    Animated.sequence([
-                        Animated.timing(timerScale, {toValue: 1.3, duration: 300, useNativeDriver: true}),
-                        Animated.timing(timerScale, {toValue: 1, duration: 300, useNativeDriver: true}),
-                    ]).start();
+                    playMilestoneAnimation();
                 }
             }, 1000);
         } else if (timerInterval.current !== null) {
@@ -147,26 +166,13 @@ export function Timer() {
                 clearInterval(timerInterval.current);
             }
         };
-    }, [isTracking, milestone, lastMilestoneTime, getMilestoneMessage, timerScale]);
+    }, [isTracking, milestone, lastMilestoneTime, getMilestoneMessage, playMilestoneAnimation]);
 
     useEffect(() => {
         if (isTracking) {
             dispatch(setActivityElapsedTime(localElapsedTimeRef.current));
         }
     }, [isTracking, dispatch, localElapsedTimeRef]);
-
-    useEffect(() => {
-        if (isTracking) {
-            Animated.loop(
-                Animated.sequence([
-                    Animated.timing(timerScale, {toValue: 1.05, duration: 1000, useNativeDriver: true}),
-                    Animated.timing(timerScale, {toValue: 1, duration: 1000, useNativeDriver: true}),
-                ])
-            ).start();
-        } else {
-            timerScale.setValue(1);
-        }
-    }, [isTracking, timerScale]);
 
     useEffect(() => {
         Animated.timing(slideAnim, {
@@ -199,6 +205,7 @@ export function Timer() {
                     emoji={emoji}
                     milestone={milestone}
                     timerScale={timerScale}
+                    milestoneScale={milestoneScale}
                     description={description}
                     displayedElapsedTime={displayedElapsedTime}
                     formatElapsedTime={formatElapsedTime}

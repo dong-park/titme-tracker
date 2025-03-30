@@ -27,6 +27,7 @@ interface TimerDisplayProps {
     emoji?: string;
     milestone: string;
     timerScale: Animated.Value;
+    milestoneScale: Animated.Value;
     description?: string;
     displayedElapsedTime: number;
     formatElapsedTime: (seconds: number) => string;
@@ -43,6 +44,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                                                               emoji,
                                                               milestone,
                                                               timerScale,
+                                                              milestoneScale,
                                                               description,
                                                               displayedElapsedTime,
                                                               formatElapsedTime,
