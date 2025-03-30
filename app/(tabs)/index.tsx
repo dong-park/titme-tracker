@@ -42,13 +42,6 @@ function Root() {
                         date={new Date()} 
                     />
                 </StyledScrollView>
-                
-                {/* Timer를 fixed 위치로 변경 */}
-                {activityState.isTracking && (
-                    <StyledView className="absolute bottom-6 right-4 z-50">
-                        <Timer />
-                    </StyledView>
-                )}
             </ElapsedTimeProvider>
         </StyledSafeAreaView>
     )

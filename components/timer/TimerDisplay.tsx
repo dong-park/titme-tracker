@@ -73,6 +73,19 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
         });
     };
 
+    // 버튼에 표시할 시간 포맷팅 함수
+    const formatTimeForButton = (seconds: number) => {
+        if (seconds < 3600) {  // 1시간 미만
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}s`;
+        } else {  // 1시간 이상
+            const hours = Math.floor(seconds / 3600);
+            const mins = Math.floor((seconds % 3600) / 60);
+            return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}m`;
+        }
+    };
+
     return (
         <StyledView className="relative">
             {/* 말풍선 */}
@@ -132,34 +145,48 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                 onPress={navigateToFocusPage}
             >
                 <StyledAnimatedView
-                    className="bg-white rounded-full shadow-lg"
+                    className="rounded-full shadow-lg"
                     style={{
                         transform: [{translateY: slideAnim}, {scale: timerScale}],
-                        width: 60,
-                        height: 60,
+                        width: 80,
+                        height: 80,
                         padding: 12,
                         shadowColor: "#000",
                         shadowOffset: {
                             width: 0,
-                            height: 4,
+                            height: 2,
                         },
-                        shadowOpacity: 0.15,
-                        shadowRadius: 5,
-                        elevation: 5
+                        shadowOpacity: 0.08,
+                        shadowRadius: 4,
+                        elevation: 3,
+                        borderWidth: 1,
+                        borderColor: 'rgba(230, 230, 230, 0.4)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.5)',  // 더 투명한 배경 (40% 불투명도)
                     }}
                 >
-                    <StyledView className="flex-1 items-center justify-center">
-                        <StyledText className="text-xl" numberOfLines={1}>
+                    <StyledView 
+                        className="flex-1 items-center justify-center"
+                        style={{
+                            backgroundColor: 'transparent',
+                            borderRadius: 100,
+                            width: '100%',
+                            height: '100%',
+                        }}
+                    >
+                        <StyledText>
                             {emoji}
                         </StyledText>
+                        <StyledText 
+                            className="text-base font-bold text-center" 
+                            style={{
+                                width: 65, // 고정 너비를 더 넓게 설정
+                                textAlign: 'center',
+                                color: '#333333', // 글자 색상 어둡게 하여 가독성 유지
+                            }}
+                        >
+                            {formatTimeForButton(displayedElapsedTime)}
+                        </StyledText>
                     </StyledView>
-
-                    <StyledTouchableOpacity
-                        className="absolute -top-1.5 -right-1.5 p-0.5 rounded-full z-10"
-                        onPress={handleStopTracking}
-                    >
-                        <Ionicons name="close-circle" size={16} color="#FF5A5F" />
-                    </StyledTouchableOpacity>
                 </StyledAnimatedView>
             </StyledTouchableOpacity>
         </StyledView>
