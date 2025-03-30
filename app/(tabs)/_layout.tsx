@@ -16,38 +16,27 @@ export default function TabLayout() {
                     screenOptions={{
                         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
                         headerShown: false,
-                        tabBarStyle: Platform.select({
-                            ios: {
-                                // position: 'absolute', // 아이폰에서만 안전 영역 위에 배치
-                                // bottom: 20,
-                                height: 75,
-                                paddingBottom: 20,
-                                paddingTop: 5,
-                                // left: 10,
-                                // right: 10,
-                                borderRadius: 15,
-                                backgroundColor: Colors[colorScheme ?? 'light'].background,
-                                shadowColor: '#000',
-                                shadowOffset: { width: 0, height: 4 },
-                                shadowOpacity: 0.3,
-                                shadowRadius: 10,
-                            },
-                            default: {
-                                height: 50,
-                                paddingBottom: 5,
-                            },
-                        }),
+                        tabBarStyle: {
+                            height: 85,
+                            paddingTop: 0,
+                            paddingBottom: Platform.OS === 'ios' ? 30 : 10,
+                            backgroundColor: Colors[colorScheme ?? 'light'].background,
+                            borderTopWidth: 0.5,
+                            borderTopColor: 'rgba(0, 0, 0, 0.15)',
+                        },
                         tabBarLabelStyle: {
                             fontSize: 10,
+                            fontWeight: '500',
+                            marginTop: -5,
                         },
                     }}
                 >
                     <Tabs.Screen
                         name="index"
                         options={{
-                            title: 'Home',
+                            title: '홈',
                             tabBarIcon: ({ color, focused }) => (
-                                <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} size={30} />
+                                <TabBarIcon name={focused ? 'home' : 'home-outline'} color={color} />
                             ),
                         }}
                     />
@@ -57,7 +46,7 @@ export default function TabLayout() {
                         options={{
                             title: '할일',
                             tabBarIcon: ({ color, focused }) => (
-                                <TabBarIcon name={focused ? 'list' : 'list-outline'} color={color} size={30} />
+                                <TabBarIcon name={focused ? 'list' : 'list-outline'} color={color} />
                             ),
                         }}
                     />
@@ -67,7 +56,7 @@ export default function TabLayout() {
                         options={{
                             title: '기록',
                             tabBarIcon: ({ color, focused }) => (
-                                <TabBarIcon name={focused ? 'time' : 'time-outline'} color={color} size={30} />
+                                <TabBarIcon name={focused ? 'time' : 'time-outline'} color={color} />
                             ),
                         }}
                     />
