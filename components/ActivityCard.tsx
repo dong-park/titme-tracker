@@ -1,6 +1,6 @@
-import React, {forwardRef, useEffect, useImperativeHandle, useRef} from "react";
+import React, {forwardRef, useEffect, useImperativeHandle, useRef, memo} from "react";
 import { Platform, Text, TouchableOpacity, View } from "react-native";
-import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming } from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withRepeat, withTiming, cancelAnimation } from 'react-native-reanimated';
 import { LongPressGestureHandler, State } from 'react-native-gesture-handler';
 import { HandlerStateChangeEvent } from "react-native-gesture-handler/lib/typescript/handlers/gestureHandlerCommon";
 import { MenuActivity } from "@/store/activitySlice";
@@ -23,7 +23,8 @@ interface ActivityCardProps {
     anyActivityTracking?: boolean;
 }
 
-export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
+// React.memo로 컴포넌트 감싸기 전에 먼저 기본 구현
+const ActivityCardBase = forwardRef<ActivityCardRef, ActivityCardProps>(
     ({ activity, onActivityPress, isEditMode, isTracking, anyActivityTracking }, ref) => {
         const progress = useSharedValue(0);
         const scale = useSharedValue(1);
@@ -34,6 +35,14 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
         const tintColor = Colors[colorScheme ?? 'light'].tint;
         const backgroundColor = Colors[colorScheme ?? 'light'].background;
         const inactiveColor = '#F2F2F7'; // iOS 기본 회색 배경
+
+        // 애니메이션 메모리 누수 방지를 위한 정리 함수
+        const cleanupAnimations = () => {
+            cancelAnimation(rotation);
+            cancelAnimation(progress);
+            cancelAnimation(scale);
+            cancelAnimation(opacity);
+        };
 
         useEffect(() => {
             if (isEditMode) {
@@ -47,9 +56,19 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
 
             // 컴포넌트가 언마운트될 때 애니메이션 정리
             return () => {
-                rotation.value = 0;
+                cleanupAnimations();
             };
         }, [isEditMode]);
+
+        // 배경색 계산을 최적화 - useMemo로 변경
+        const cardBackgroundColor = React.useMemo(() => {
+            return isTracking ? tintColor : (anyActivityTracking ? inactiveColor : backgroundColor);
+        }, [isTracking, anyActivityTracking, tintColor, inactiveColor, backgroundColor]);
+
+        // 텍스트 색상 계산 최적화
+        const textColor = React.useMemo(() => {
+            return isTracking ? 'text-white' : 'text-[#8E8E93]';
+        }, [isTracking]);
 
         const animatedStyle = useAnimatedStyle(() => ({
             backgroundColor: progress.value >= 1 ? 'rgba(135, 206, 250, 0.6)' : 'rgba(135, 206, 250, 0.4)',
@@ -96,6 +115,26 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
             resetAnimation,
         }));
 
+        // 활동 전환 시 버튼 클릭 핸들러 최적화
+        const handleButtonPress = React.useCallback(() => {
+            resetAnimation();
+
+            if (isEditMode) {
+                router.push({
+                    pathname: `/activity/edit`,
+                    params: { id: activity.id },
+                });
+            }
+        }, [isEditMode, activity.id]);
+
+        // 롱프레스 핸들러 최적화
+        const handleLongPress = React.useCallback(() => {
+            if (!isEditMode) {
+                resetAnimation();
+                onActivityPress(activity);
+            }
+        }, [isEditMode, activity]);
+
         return (
             <LongPressGestureHandler
                 onHandlerStateChange={onLongPressStateChange}
@@ -110,31 +149,10 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
                             style={animatedStyle}
                         />}
                         <TouchableOpacity
-                            onPress={() => {
-                                resetAnimation()
-
-                                if (isEditMode) {
-                                    router.push(
-                                        {
-                                            pathname: `/activity/edit`,
-                                            params: { id: activity.id },
-                                        }
-                                    )
-                                }
-                            }}
-                            onLongPress={() => {
-                                if (!isEditMode) {
-                                    resetAnimation();
-                                    onActivityPress(activity);
-                                }
-                            }}
+                            onPress={handleButtonPress}
+                            onLongPress={handleLongPress}
                             style={{ 
-                                // 활성화된 카드는 항상 tintColor, 
-                                // 어떤 활동이라도 트래킹 중인 경우 비활성화된 카드는 회색,
-                                // 아무것도 트래킹하지 않는 경우 모든 카드는 흰색
-                                backgroundColor: isTracking 
-                                    ? tintColor 
-                                    : (anyActivityTracking ? inactiveColor : backgroundColor),
+                                backgroundColor: cardBackgroundColor,
                                 borderRadius: 16,
                                 padding: 15,
                                 alignItems: 'center',
@@ -147,9 +165,7 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
                         >
                             <Text className="text-[28px] mb-[5px]" numberOfLines={1}>{activity.emoji}</Text>
                             <Text 
-                                className={`text-sm font-medium ${
-                                    isTracking ? 'text-white' : 'text-[#8E8E93]'
-                                }`} 
+                                className={`text-sm font-medium ${textColor}`} 
                                 numberOfLines={1}
                             >
                                 {activity.name}
@@ -161,3 +177,18 @@ export const ActivityCard = forwardRef<ActivityCardRef, ActivityCardProps>(
         );
     }
 );
+
+// 불필요한 리렌더링을 방지하기 위한 props 비교 함수
+const arePropsEqual = (prevProps: ActivityCardProps, nextProps: ActivityCardProps) => {
+    return (
+        prevProps.activity.id === nextProps.activity.id &&
+        prevProps.activity.name === nextProps.activity.name &&
+        prevProps.activity.emoji === nextProps.activity.emoji &&
+        prevProps.isEditMode === nextProps.isEditMode &&
+        prevProps.isTracking === nextProps.isTracking &&
+        prevProps.anyActivityTracking === nextProps.anyActivityTracking
+    );
+};
+
+// React.memo로 감싼 최종 컴포넌트 export
+export const ActivityCard = memo(ActivityCardBase, arePropsEqual);

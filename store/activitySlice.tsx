@@ -1,5 +1,6 @@
 // activitySlice.ts
-import {createSlice, PayloadAction} from '@reduxjs/toolkit';
+import {createSlice, PayloadAction, createAsyncThunk, AnyAction} from '@reduxjs/toolkit';
+import { AppThunk, RootState } from './store';
 
 export interface FocusSegment {
     description: string;
@@ -77,6 +78,52 @@ const formatTime = (date: Date) => {
     return date.toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
 };
 
+// 비동기 액션: stopTracking을 thunk로 구현
+export const stopTrackingAsync = createAsyncThunk<
+    { activity: Activity } | null,
+    void,
+    { state: RootState }
+>(
+    'activity/stopTrackingAsync',
+    async (_, { getState }) => {
+        const state = getState();
+        
+        if (!state.activity.trackingActivity) {
+            return null;
+        }
+
+        const trackingActivity = state.activity.trackingActivity;
+        if (!trackingActivity.startDate) {
+            throw new Error("Tracking activity startDate is undefined");
+        }
+
+        const finalEndTime = new Date();
+        const startTime = new Date(trackingActivity.startDate).getTime();
+        const endTime = finalEndTime.getTime();
+        const finalElapsed = Math.floor((endTime - startTime) / 1000);
+
+        return {
+            activity: {
+                index: state.activity.activities.length,
+                time: `${trackingActivity.startTime} - ${formatTime(finalEndTime)}`,
+                tag: trackingActivity.description || "",
+                emoji: trackingActivity.emoji || "",
+                description: trackingActivity.description || "",
+                elapsedTime: finalElapsed,
+                startDate: trackingActivity.startDate,
+                endDate: finalEndTime.toISOString(),
+                focusSegments: trackingActivity.focusSegments,
+                color: trackingActivity.color
+            }
+        };
+    }
+);
+
+// 일반 thunk 액션으로 stopTracking을 제공 (최적화된 버전)
+export const stopTrackingThunk = (): AppThunk => async (dispatch) => {
+    await dispatch(stopTrackingAsync());
+};
+
 const activitySlice = createSlice({
     name: 'activity',
     initialState,
@@ -117,40 +164,36 @@ const activitySlice = createSlice({
             }
         },
 
+        // 기존 stopTracking 리듀서는 유지 (하위 호환성을 위해)
         stopTracking: (state) => {
             if (state.trackingActivity) {
-                const finalEndTime = new Date(); // 현재 시각
+                const finalEndTime = new Date();
                 const cTrackingActivity = state.trackingActivity;
 
-                // 시작 시간이 undefined인 경우 처리
                 if (!cTrackingActivity.startDate) {
                     throw new Error("Tracking activity startDate is undefined");
                 }
 
-                // 시작 시간과 종료 시간의 차이를 초 단위로 계산
                 const startTime = new Date(cTrackingActivity.startDate).getTime();
                 const endTime = finalEndTime.getTime();
-                const finalElapsed = Math.floor((endTime - startTime) / 1000); // 초 단위 경과 시간
+                const finalElapsed = Math.floor((endTime - startTime) / 1000);
 
-                // 최종 Activity 데이터 생성
                 const payload: Activity = {
-                    index: state.activities.length, // 활동 리스트의 현재 인덱스
-                    time: `${cTrackingActivity.startTime} - ${formatTime(finalEndTime)}`, // 시작 및 종료 시간
-                    tag: cTrackingActivity.description || "", // 태그 또는 활동 설명
-                    emoji: cTrackingActivity.emoji || "", // 활동을 나타내는 이모지
-                    description: cTrackingActivity.description || "", // 상세 설명
-                    elapsedTime: finalElapsed, // 계산된 경과 시간
-                    startDate: cTrackingActivity.startDate, // 시작 날짜
-                    endDate: finalEndTime.toISOString(), // 종료 날짜
-                    focusSegments: cTrackingActivity.focusSegments, // 기록된 집중 구간들
-                    color: cTrackingActivity.color // 활동 색상
+                    index: state.activities.length,
+                    time: `${cTrackingActivity.startTime} - ${formatTime(finalEndTime)}`,
+                    tag: cTrackingActivity.description || "",
+                    emoji: cTrackingActivity.emoji || "",
+                    description: cTrackingActivity.description || "",
+                    elapsedTime: finalElapsed,
+                    startDate: cTrackingActivity.startDate,
+                    endDate: finalEndTime.toISOString(),
+                    focusSegments: cTrackingActivity.focusSegments,
+                    color: cTrackingActivity.color
                 };
 
-                // 활동 리스트에 추가
                 state.activities.unshift(payload);
             }
 
-            // 상태 초기화
             state.isTracking = false;
             state.trackingActivity = null;
             state.elapsedTime = 0;
@@ -210,7 +253,76 @@ const activitySlice = createSlice({
             state.menu = state.menu.filter(item => item.id !== idToRemove);
         },
 
+        // 새 액션: 활동 전환을 위한 액션 (트래킹 중간 상태 없이 전환)
+        switchActivity: (state, action: PayloadAction<{
+            startTime: string;
+            description: string;
+            emoji: string;
+            color?: string;
+        }>) => {
+            // 현재 트래킹 중인 활동이 있는 경우 기록에 추가
+            if (state.trackingActivity) {
+                const finalEndTime = new Date();
+                const cTrackingActivity = state.trackingActivity;
+
+                if (cTrackingActivity.startDate) {
+                    const startTime = new Date(cTrackingActivity.startDate).getTime();
+                    const endTime = finalEndTime.getTime();
+                    const finalElapsed = Math.floor((endTime - startTime) / 1000);
+
+                    const payload: Activity = {
+                        index: state.activities.length,
+                        time: `${cTrackingActivity.startTime} - ${formatTime(finalEndTime)}`,
+                        tag: cTrackingActivity.description || "",
+                        emoji: cTrackingActivity.emoji || "",
+                        description: cTrackingActivity.description || "",
+                        elapsedTime: finalElapsed,
+                        startDate: cTrackingActivity.startDate,
+                        endDate: finalEndTime.toISOString(),
+                        focusSegments: cTrackingActivity.focusSegments,
+                        color: cTrackingActivity.color
+                    };
+
+                    state.activities.unshift(payload);
+                }
+            }
+
+            // 메뉴에서 해당 활동의 색상 찾기
+            const menuActivity = state.menu.find(
+                item => item.name === action.payload.description && item.emoji === action.payload.emoji
+            );
+
+            // 시간 정확히 지금으로 설정 (밀리초 단위까지 정확하게)
+            const now = new Date();
+            
+            // 새 활동으로 바로 전환 (중간 상태 없이)
+            state.trackingActivity = {
+                startDate: now.toISOString(), // 밀리초 단위까지 정확한 시간 사용
+                startTime: action.payload.startTime,
+                description: action.payload.description,
+                emoji: action.payload.emoji,
+                elapsedTime: 0, // 명확한 초기화
+                focusSegments: [],
+                color: action.payload.color || menuActivity?.color || activityColors[action.payload.emoji]
+            };
+            
+            // 전역 타이머 상태도 확실하게 초기화
+            state.isTracking = true;
+            state.elapsedTime = 0;
+        },
+
     },
+    extraReducers: (builder) => {
+        builder
+            .addCase(stopTrackingAsync.fulfilled, (state, action) => {
+                if (action.payload) {
+                    state.activities.unshift(action.payload.activity);
+                }
+                state.isTracking = false;
+                state.trackingActivity = null;
+                state.elapsedTime = 0;
+            });
+    }
 });
 
 export const {
@@ -220,6 +332,7 @@ export const {
     setElapsedTime,
     updateMenuActivity,
     addMenuActivity,
-    removeMenuActivity
+    removeMenuActivity,
+    switchActivity
 } = activitySlice.actions;
 export default activitySlice.reducer;

@@ -148,8 +148,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                     className="rounded-full shadow-lg"
                     style={{
                         transform: [{translateY: slideAnim}, {scale: timerScale}],
-                        width: 80,
-                        height: 80,
+                        width: 90,
+                        height: 90,
                         padding: 12,
                         shadowColor: "#000",
                         shadowOffset: {
@@ -161,7 +161,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                         elevation: 3,
                         borderWidth: 1,
                         borderColor: 'rgba(230, 230, 230, 0.4)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.5)',  // 더 투명한 배경 (40% 불투명도)
+                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
                     }}
                 >
                     <StyledView 
@@ -179,9 +179,9 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                         <StyledText 
                             className="text-base font-bold text-center" 
                             style={{
-                                width: 65, // 고정 너비를 더 넓게 설정
+                                width: 75,
                                 textAlign: 'center',
-                                color: '#333333', // 글자 색상 어둡게 하여 가독성 유지
+                                color: '#333333',
                             }}
                         >
                             {formatTimeForButton(displayedElapsedTime)}

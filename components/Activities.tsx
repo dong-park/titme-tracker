@@ -1,6 +1,6 @@
 import {useDispatch, useSelector} from "react-redux";
 import {RootState} from "@/store/store";
-import {MenuActivity, startTracking, stopTracking, updateMenuActivity} from "@/store/activitySlice";
+import {MenuActivity, startTracking, stopTracking, switchActivity, updateMenuActivity} from "@/store/activitySlice";
 import {
     Platform,
     ScrollView,
@@ -91,31 +91,46 @@ export function Activities() {
 
     const { rowOne, rowTwo } = organizeActivities();
 
-    const handleActivityPress = async (activity: MenuActivity) => {
+    // 활동 전환 최적화를 위한 함수
+    const handleActivityPress = React.useCallback(async (activity: MenuActivity) => {
         console.log('Activity pressed:', activity);
         
-        // 현재 추적 중인 활동인지 확인
+        // 이미 트래킹 중인 같은 활동을 다시 누르면 종료
         if (activityState.isTracking && activityState.trackingActivity?.description === activity.name) {
-            // 현재 추적 중인 활동을 다시 누르면 종료
-            await dispatch(stopTracking());
+            dispatch(stopTracking());
             setLocalElapsedTime(0);
             return;
         }
 
         const currentStartTime = new Date().toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'});
-
-        if (activityState.isTracking) {
-            await dispatch(stopTracking());
-        }
         
-        setLocalElapsedTime(0)
-        dispatch(startTracking({
-            startTime: currentStartTime,
-            description: activity.name,
-            emoji: activity.emoji,
-            elapsedTime: 0,
-        }));
-    };
+        // 타이머 확실하게 초기화
+        setLocalElapsedTime(0);
+        localElapsedTimeRef.current = 0;
+
+        // 트래킹 상태 전환
+        if (activityState.isTracking) {
+            // 새로운 switchActivity 액션 사용 - 중간 상태 없이 바로 전환
+            dispatch(switchActivity({
+                startTime: currentStartTime,
+                description: activity.name,
+                emoji: activity.emoji,
+            }));
+            
+            // 타이머 컴포넌트 동기화를 위해 약간의 지연 후 다시 한번 초기화
+            setTimeout(() => {
+                setLocalElapsedTime(0);
+            }, 50);
+        } else {
+            // 트래킹 중이 아니면 일반 시작 액션 사용
+            dispatch(startTracking({
+                startTime: currentStartTime,
+                description: activity.name,
+                emoji: activity.emoji,
+                elapsedTime: 0,  // 명시적으로 0 설정
+            }));
+        }
+    }, [activityState.isTracking, activityState.trackingActivity, dispatch, setLocalElapsedTime, localElapsedTimeRef]);
 
     const toggleEditMode = () => {
         // 수정 모드 전환 시 컴포넌트를 강제로 다시 렌더링하여 애니메이션 상태 초기화

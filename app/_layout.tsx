@@ -46,7 +46,7 @@ function TimerWrapper() {
   return (
     <View style={{
       position: 'absolute',
-      bottom: 90,
+      bottom: 95,
       right: 10,
       zIndex: 100
     }}>

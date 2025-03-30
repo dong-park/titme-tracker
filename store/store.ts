@@ -1,10 +1,11 @@
-import { configureStore } from '@reduxjs/toolkit';
+import { configureStore, Action } from '@reduxjs/toolkit';
 import todoReducer from './todoSlice';
 import activityReducer from './activitySlice';
 import pomodoroReducer from './pomodoroSlice';
 import { persistStore, persistReducer } from 'redux-persist';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { combineReducers } from 'redux';
+import { ThunkAction } from 'redux-thunk';
 
 // 개발 중 상태 초기화를 위한 함수
 export const clearPersistedState = async () => {
@@ -68,4 +69,12 @@ export const store = configureStore({
 export const persistor = persistStore(store);
 
 export type RootState = ReturnType<typeof store.getState>;
-export type AppDispatch = typeof store.dispatch; 
+export type AppDispatch = typeof store.dispatch;
+
+// Redux Thunk 타입 정의
+export type AppThunk<ReturnType = void> = ThunkAction<
+  ReturnType,
+  RootState,
+  unknown,
+  Action<string>
+>; 
