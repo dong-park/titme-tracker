@@ -38,6 +38,8 @@ interface TimerDisplayProps {
     handleStopTracking: () => void;
     togglePomodoroTimer: () => void;
     activityId?: number;
+    isMilestoneVisible: boolean;
+    milestoneOpacity: Animated.Value;
 }
 
 export const TimerDisplay: React.FC<TimerDisplayProps> = ({
@@ -54,7 +56,9 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                                                               slideAnim,
                                                               handleStopTracking,
                                                               togglePomodoroTimer,
-                                                              activityId
+                                                              activityId,
+                                                              isMilestoneVisible,
+                                                              milestoneOpacity
                                                           }) => {
     // 메모이제이션된 셀렉터 사용
     const activity = useSelector(
@@ -72,7 +76,7 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     return (
         <StyledView className="relative">
             {/* 말풍선 */}
-            {milestone && (
+            {isMilestoneVisible && milestone && (
                 <StyledAnimatedView
                     className="bg-[#4B7BF5] rounded-xl px-6 py-3 mb-2"
                     style={{
@@ -93,7 +97,8 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                         shadowRadius: 3,
                         elevation: 3,
                         zIndex: 1,
-                        alignSelf: 'flex-end'
+                        alignSelf: 'flex-end',
+                        opacity: milestoneOpacity
                     }}
                 >
                     <StyledAnimatedText
