@@ -96,6 +96,11 @@ const ActivityCardBase = forwardRef<ActivityCardRef, ActivityCardProps>(
         };
 
         const onLongPressStateChange = (event: HandlerStateChangeEvent) => {
+            // 추적 중인 활동은 롱프레스 처리하지 않음
+            if (isTracking) {
+                return;
+            }
+            
             if (event.nativeEvent.state === State.BEGAN) {
                 progress.value = withTiming(1, { duration: 500 });
                 isAnimating.current = true;
@@ -124,16 +129,20 @@ const ActivityCardBase = forwardRef<ActivityCardRef, ActivityCardProps>(
                     pathname: `/activity/edit`,
                     params: { id: activity.id },
                 });
+            } else if (isTracking) {
+                // 추적 중인 활동을 클릭하면 종료 동작 수행
+                onActivityPress(activity);
             }
-        }, [isEditMode, activity.id]);
+        }, [isEditMode, activity, isTracking, onActivityPress]);
 
         // 롱프레스 핸들러 최적화
         const handleLongPress = React.useCallback(() => {
-            if (!isEditMode) {
+            // 추적 중이거나 편집 모드면 롱프레스 동작 방지
+            if (!isEditMode && !isTracking) {
                 resetAnimation();
                 onActivityPress(activity);
             }
-        }, [isEditMode, activity]);
+        }, [isEditMode, activity, isTracking]);
 
         return (
             <LongPressGestureHandler
@@ -156,12 +165,13 @@ const ActivityCardBase = forwardRef<ActivityCardRef, ActivityCardProps>(
                                 borderRadius: 16,
                                 padding: 15,
                                 alignItems: 'center',
-                                shadowOffset: { width: 0, height: 1 },
-                                shadowOpacity: 0.2,
-                                shadowRadius: 2,
-                                elevation: 2
+                                // shadowOffset: { width: 1, height: 7 },
+                                // shadowOpacity: 0.2,
+                                // shadowRadius: 2,
+                                // shadowColor: '#000',
+                                elevation: 3
                             }}
-                            className="z-[1]"
+                            className="z-[1] border-2 border-gray-200"
                         >
                             <Text className="text-[28px] mb-[5px]" numberOfLines={1}>{activity.emoji}</Text>
                             <Text 

@@ -155,31 +155,21 @@ export function Activities() {
         <GestureHandlerRootView
             className="mx-4">
             <View className="flex-row justify-between my-1 items-center">
-                <Text className="text-lg font-bold">내 활동</Text>
-                <View className="flex-row">
+                <Text className="text-lg font-semibold">내 활동</Text>
+                <View className="flex-row items-center">
                     <TouchableOpacity
-                        className="py-1.5 rounded-lg flex-row items-center mr-2"
+                        className="py-2 px-3 rounded-lg flex-row items-center"
                         onPress={handleAddActivity}
                     >
-                        <Icon
-                            name="add-circle-outline"
-                            size={18}
-                            color="black"
-                            style={{marginRight: 4}}
-                        />
-                        <Text className="text-sm">추가</Text>
+                        <Text className="text-[#007AFF] text-base">추가</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
-                        className="py-1.5 rounded-lg flex-row items-center"
+                        className="py-2 px-3 rounded-lg flex-row items-center"
                         onPress={toggleEditMode}
                     >
-                        <Icon
-                            name={isEditMode ? "checkmark" : "pencil"}
-                            size={16}
-                            color="black"
-                            style={{marginRight: 4}}
-                        />
-                        <Text className="text-sm">{isEditMode ? "완료" : "수정"}</Text>
+                        <Text className="text-[#007AFF] text-base">
+                            {isEditMode ? "완료" : "편집"}
+                        </Text>
                     </TouchableOpacity>
                 </View>
             </View>
