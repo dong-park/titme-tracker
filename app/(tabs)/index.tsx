@@ -27,12 +27,7 @@ function Root() {
         <StyledSafeAreaView className="flex-1 bg-slate-100">
             <ElapsedTimeProvider>
                 <StyledScrollView
-                    className="flex-1"
                     showsVerticalScrollIndicator={false}
-                    contentContainerStyle={{
-                        flexGrow: 1,
-                        paddingBottom: 20
-                    }}
                 >
                     <Activities/>
                     
@@ -49,16 +44,3 @@ function Root() {
 
 const StyledText = styled(Text);
 const StyledTouchableOpacity = styled(TouchableOpacity);
-
-function Header() {
-    return (
-        <View className="flex-row justify-between items-center px-4 py-2">
-            <Text className="text-xl font-bold">Time Tracker</Text>
-            <TouchableOpacity className="p-2">
-                <Text>Settings</Text>
-            </TouchableOpacity>
-        </View>
-    );
-}
-
-// 기존 스타일시트는 제거하고 Tailwind 스타일을 대신 사용합니다

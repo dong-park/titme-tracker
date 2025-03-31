@@ -34,13 +34,12 @@ const selectTodosByActivityId = createSelector(
   (todosByActivity, activityId) => todosByActivity[activityId] || []
 );
 
-export function TodoList({ activityId }: TodoListProps) {
+export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDelete, onCancelDelete }: TodoListProps) {
   const dispatch = useDispatch();
   const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
   const [localTodos, setLocalTodos] = useState<TodoItemType[]>([]);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
-  const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const editInputRef = useRef<TextInput>(null);
   
   // todos가 변경될 때 localTodos 업데이트 (editingTodoId가 null일 때만)
@@ -85,6 +84,13 @@ export function TodoList({ activityId }: TodoListProps) {
     });
   };
   
+  // 부모 컴포넌트에 handleStartAddTodo 함수 전달
+  useEffect(() => {
+    if (onAddTodo) {
+      onAddTodo(handleStartAddTodo);
+    }
+  }, [handleStartAddTodo, onAddTodo]);
+  
   // 할일 완료/미완료 토글
   const handleToggleTodo = (todoId: string) => {
     dispatch(toggleTodo({
@@ -100,25 +106,8 @@ export function TodoList({ activityId }: TodoListProps) {
       setEditingTodoId(null);
       setEditingText('');
     }
-    setPendingDeleteIds(prev => [...prev, todoId]);
   };
 
-  // 할일 완전 삭제
-  const handleConfirmDelete = () => {
-    pendingDeleteIds.forEach(todoId => {
-      dispatch(deleteTodo({
-        activityId,
-        todoId
-      }));
-    });
-    setPendingDeleteIds([]);
-  };
-
-  // 삭제 취소
-  const handleCancelDelete = () => {
-    setPendingDeleteIds([]);
-  };
-  
   // 할일 순서 변경
   const handleReorderTodos = ({ data }: { data: TodoItemType[] }) => {
     // 드래그 앤 드롭 유효성 검사
@@ -199,15 +188,23 @@ export function TodoList({ activityId }: TodoListProps) {
           data={localTodos}
           onDragEnd={handleReorderTodos}
           keyExtractor={(item) => item.id}
+          contentContainerStyle={{ flexGrow: 1, minHeight: '100%' }}
+          ListEmptyComponent={
+            <StyledView className="flex-1 justify-center items-center">
+              <StyledText className="text-gray-400 text-base">할 일이 없습니다.</StyledText>
+            </StyledView>
+          }
           renderItem={({ item, drag, isActive }) => (
             <TodoItem
               todo={item}
               onToggle={handleToggleTodo}
-              onDelete={handleStartDelete}
+              onDelete={() => {
+                if (onCancelDelete) onCancelDelete(item.id);
+              }}
               onDragStart={drag}
               isActive={isActive}
               isEditing={editingTodoId === item.id}
-              isPendingDelete={pendingDeleteIds.includes(item.id)}
+              isPendingDelete={pendingDeleteIds?.includes(item.id) || false}
               editingText={editingText}
               onStartEdit={() => handleStartEdit(item)}
               onFinishEdit={handleFinishEdit}
@@ -217,31 +214,6 @@ export function TodoList({ activityId }: TodoListProps) {
             />
           )}
         />
-
-        {/* 플로팅 버튼 */}
-        {pendingDeleteIds.length > 0 ? (
-          <StyledView className="absolute right-4 bottom-4 flex-row">
-            <StyledTouchableOpacity
-              className="w-14 h-14 bg-red-500 rounded-full items-center justify-center shadow-lg mr-2"
-              onPress={handleConfirmDelete}
-            >
-              <Ionicons name="trash" size={32} color="white" />
-            </StyledTouchableOpacity>
-            <StyledTouchableOpacity
-              className="w-14 h-14 bg-gray-500 rounded-full items-center justify-center shadow-lg"
-              onPress={handleCancelDelete}
-            >
-              <Ionicons name="close" size={32} color="white" />
-            </StyledTouchableOpacity>
-          </StyledView>
-        ) : (
-          <StyledTouchableOpacity
-            className="absolute right-4 bottom-4 w-14 h-14 bg-blue-500 rounded-full items-center justify-center shadow-lg"
-            onPress={handleStartAddTodo}
-          >
-            <Ionicons name="add" size={32} color="white" />
-          </StyledTouchableOpacity>
-        )}
       </StyledView>
     </GestureHandlerRootView>
   );

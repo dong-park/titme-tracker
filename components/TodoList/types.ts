@@ -4,6 +4,10 @@ import { TodoItem as TodoItemType } from '@/store/todoSlice';
 // 컴포넌트 props 타입 정의
 export interface TodoListProps {
   activityId: number;
+  onAddTodo?: (addTodoFn: () => void) => void;
+  pendingDeleteIds?: string[];
+  onConfirmDelete?: () => void;
+  onCancelDelete?: (todoId: string) => void;
 }
 
 // TodoItem 컴포넌트 Props 인터페이스
