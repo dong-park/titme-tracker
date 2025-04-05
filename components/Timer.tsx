@@ -46,7 +46,7 @@ export function Timer() {
     const [milestone, setMilestone] = useState("집중 시작!");
     const [lastMilestoneTime, setLastMilestoneTime] = useState(0);
     const timerInterval = useRef<number | NodeJS.Timeout | null>(null);
-    const [timerScale] = useState(new Animated.Value(1));
+    const [stopButtonScale] = useState(new Animated.Value(1));
     const [slideAnim] = useState(new Animated.Value(0));
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandAnim] = useState(new Animated.Value(0));
@@ -140,11 +140,6 @@ export function Timer() {
         }
     }, [activityState.trackingActivity, dispatch, localElapsedTimeRef]);
 
-    const togglePomodoroTimer = useCallback(() => {
-        // 더 이상 사용하지 않음
-        console.log("포모도로 타이머 토글");
-    }, []);
-
     // 마일스톤 메시지 생성 함수
     const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
         return TimerUtils.getMilestoneMessage(seconds, lastMilestone, milestone, false);
@@ -155,17 +150,17 @@ export function Timer() {
         return TimerUtils.formatElapsedTime(seconds);
     }, []);
 
-    // 일반 타이머 흐르게하는 useEffect
+    // 중지 버튼 애니메이션
     useEffect(() => {
         if (isTracking) {
             const pulseAnimation = Animated.loop(
                 Animated.sequence([
-                    Animated.timing(timerScale, {
-                        toValue: 1.02,
+                    Animated.timing(stopButtonScale, {
+                        toValue: 1.2,
                         duration: 1000,
                         useNativeDriver: true
                     }),
-                    Animated.timing(timerScale, {
+                    Animated.timing(stopButtonScale, {
                         toValue: 1,
                         duration: 1000,
                         useNativeDriver: true
@@ -174,18 +169,18 @@ export function Timer() {
             );
 
             // 기존 애니메이션 중지
-            timerScale.stopAnimation();
+            stopButtonScale.stopAnimation();
             // 새로운 애니메이션 시작
             pulseAnimation.start();
 
             return () => {
                 pulseAnimation.stop();
-                timerScale.setValue(1);
+                stopButtonScale.setValue(1);
             };
         } else {
-            timerScale.setValue(1);
+            stopButtonScale.setValue(1);
         }
-    }, [isTracking, timerScale]);
+    }, [isTracking, stopButtonScale]);
 
     // 마일스톤 달성 애니메이션을 위한 별도의 scale 값
     const milestoneScale = useRef(new Animated.Value(1)).current;
@@ -250,22 +245,16 @@ export function Timer() {
     }, [isExpanded, expandAnim]);
 
     return (
-        <GestureHandlerRootView style={{ zIndex: 10, flex: 1 }}>
-            <StyledView className="flex-1">
+        <GestureHandlerRootView className="z-10 flex-1">
+            <StyledView className="flex-1 w-full">
                 <TimerDisplay
                     emoji={emoji}
                     milestone={milestone}
-                    timerScale={timerScale}
-                    milestoneScale={milestoneScale}
+                    stopButtonScale={stopButtonScale}
                     description={description}
                     displayedElapsedTime={displayedElapsedTime}
                     formatElapsedTime={formatElapsedTime}
-                    isExpanded={isExpanded}
-                    setIsExpanded={setIsExpanded}
-                    expandAnim={expandAnim}
-                    slideAnim={slideAnim}
                     handleStopTracking={handleStopTracking}
-                    togglePomodoroTimer={togglePomodoroTimer}
                     activityId={currentActivityId}
                 />
             </StyledView>

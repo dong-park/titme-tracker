@@ -26,34 +26,22 @@ const selectActivityById = createSelector(
 interface TimerDisplayProps {
     emoji?: string;
     milestone: string;
-    timerScale: Animated.Value;
-    milestoneScale: Animated.Value;
+    stopButtonScale: Animated.Value;
     description?: string;
     displayedElapsedTime: number;
     formatElapsedTime: (seconds: number) => string;
-    isExpanded: boolean;
-    setIsExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-    expandAnim: Animated.Value;
-    slideAnim: Animated.Value;
     handleStopTracking: () => void;
-    togglePomodoroTimer: () => void;
     activityId?: number;
 }
 
 export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     emoji,
     milestone,
-    timerScale,
-    milestoneScale,
+    stopButtonScale,
     description,
     displayedElapsedTime,
     formatElapsedTime,
-    isExpanded,
-    setIsExpanded,
-    expandAnim,
-    slideAnim,
     handleStopTracking,
-    togglePomodoroTimer,
     activityId
 }) => {
     // 메모이제이션된 셀렉터 사용
@@ -83,38 +71,40 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
     };
 
     return (
-        <StyledView className="relative">
-            {/* 타이머 메뉴바 */}
-            <StyledTouchableOpacity
-                className="active:opacity-80"
+        <StyledView className="relative w-full">
+            <StyledTouchableOpacity 
+                className="active:opacity-80 w-full"
                 onPress={navigateToFocusPage}
             >
-                <StyledAnimatedView
-                    className="flex-row items-center rounded-lg"
-                    style={{
-                        transform: [{translateY: slideAnim}, {scale: timerScale}],
-                        paddingHorizontal: 20,
-                        paddingVertical: 6,
-                        shadowColor: "#000",
-                        shadowOffset: {
-                            width: 0,
-                            height: 2,
-                        },
-                        shadowOpacity: 0.05,
-                        shadowRadius: 2,
-                        elevation: 2,
-                        backgroundColor: '#4B7BF5',
-                    }}
-                >
-                    <StyledText className="text-lg mr-2">
-                        {emoji}
-                    </StyledText>
-                    <StyledText 
-                        className="text-base font-bold text-white" 
-                    >
-                        {formatTimeForButton(displayedElapsedTime)}
-                    </StyledText>
-                </StyledAnimatedView>
+                <StyledView className="flex-row items-center justify-between bg-[#4B7BF5] px-4 py-2 w-full">
+                    {/* 왼쪽: 활동 정보 */}
+                    <StyledView className="flex-row items-center flex-1">
+                        <StyledText className="text-lg mr-2">
+                            {emoji}
+                        </StyledText>
+                        <StyledText className="text-base font-medium text-white mr-2">
+                            {description}
+                        </StyledText>
+                        <StyledText className="text-base font-bold text-white">
+                            {formatTimeForButton(displayedElapsedTime)}
+                        </StyledText>
+                    </StyledView>
+
+                    {/* 오른쪽: 기능 버튼들 */}
+                    <StyledView className="flex-row items-center">
+                        <StyledTouchableOpacity 
+                            className="p-2 bg-white/20 rounded-full"
+                            onPress={(e) => {
+                                e.stopPropagation();
+                                handleStopTracking();
+                            }}
+                        >
+                            <StyledAnimatedView style={{ transform: [{ scale: stopButtonScale }] }}>
+                                <Ionicons name="stop" size={20} color="white" />
+                            </StyledAnimatedView>
+                        </StyledTouchableOpacity>
+                    </StyledView>
+                </StyledView>
             </StyledTouchableOpacity>
         </StyledView>
     );

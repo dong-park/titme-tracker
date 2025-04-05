@@ -27,7 +27,9 @@ function TimerWrapper() {
   if (!shouldShowTimer) return null;
 
   return (
-    <View style={{
+    <View 
+    className='bg-[#4B7BF5]'
+    style={{
       position: 'absolute',
       bottom: 80, // 하단 탭바 높이와 일치시킴
       left: 0,
@@ -37,8 +39,7 @@ function TimerWrapper() {
       justifyContent: 'center',
       borderTopWidth: 0.5,
       borderTopColor: 'rgba(0, 0, 0, 0.15)',
-      backgroundColor: 'rgba(255, 255, 255, 0.95)',
-      paddingVertical: 8,
+    //   backgroundColor: 'rgba(255, 255, 255, 0.95)',
     }}>
       <Timer />
     </View>
