@@ -43,7 +43,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   return (
     <StyledTouchableOpacity
       className={`flex-row items-center p-4 bg-white border-b border-gray-200 ${
-        isActive ? 'bg-blue-50 shadow-md -translate-y-1' : ''
+        isActive ? 'bg-blue-50 shadow-md' : ''
       } ${isPendingDelete ? 'bg-red-50' : ''}`}
       onLongPress={onDragStart}
       onPress={!isPendingDelete ? onStartEdit : undefined}
@@ -64,14 +64,27 @@ const TodoItem: React.FC<TodoItemProps> = ({
         <StyledView className="flex-1 flex-row items-center">
           <StyledTextInput
             ref={editInputRef}
-            className="flex-1 text-base border-b border-gray-300"
+            className="flex-1 text-base py-0 px-0 -mt-1.5"
             value={editingText}
             onChangeText={onEditTextChange}
-            onSubmitEditing={onFinishEdit}
-            onBlur={onFinishEdit}
+            onSubmitEditing={(e) => {
+              if (e.nativeEvent.text.trim() !== '') {
+                onFinishEdit();
+              } else {
+                onCancelEdit();
+              }
+            }}
+            onBlur={(e) => {
+              if (e.nativeEvent.text.trim() !== '') {
+                onFinishEdit();
+              } else {
+                onCancelEdit();
+              }
+            }}
             autoFocus
             placeholder="할일을 입력하세요"
             placeholderTextColor="#999"
+            style={{ textAlignVertical: 'center', height: 24 }}
           />
           <StyledTouchableOpacity
             className="ml-2"
@@ -82,11 +95,12 @@ const TodoItem: React.FC<TodoItemProps> = ({
         </StyledView>
       ) : (
         <StyledText
-          className={`flex-1 text-base ${
+          className={`flex-1 text-base -mt-0.5 ${
             todo.completed ? 'line-through text-gray-400' : ''
           } ${isPendingDelete ? 'text-red-500' : ''}`}
+          style={{ height: 24, textAlignVertical: 'center' }}
         >
-          {todo.text || '할일을 입력하세요'}
+          {todo.text}
         </StyledText>
       )}
 

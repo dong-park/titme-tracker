@@ -52,7 +52,24 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
   // 컴포넌트 마운트 시 활동 초기화
   useEffect(() => {
     dispatch(initializeActivity({ activityId }));
+    
+    // 활동이 변경될 때 편집 모드 취소
+    if (editingTodoId !== null) {
+      setEditingTodoId(null);
+      setEditingText('');
+    }
   }, [activityId, dispatch]);
+  
+  // pendingDeleteIds가 변경될 때 편집 모드 취소
+  useEffect(() => {
+    if (pendingDeleteIds && pendingDeleteIds.length > 0 && editingTodoId !== null) {
+      // 현재 편집 중인 할일이 삭제 대상이면 편집 모드 종료
+      if (pendingDeleteIds.includes(editingTodoId)) {
+        setEditingTodoId(null);
+        setEditingText('');
+      }
+    }
+  }, [pendingDeleteIds, editingTodoId]);
   
   // 할일 추가 시작
   const handleStartAddTodo = () => {

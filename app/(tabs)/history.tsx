@@ -14,9 +14,6 @@ export default function HistoryScreen() {
   return (
     <Provider store={store}>
       <StyledSafeAreaView className="flex-1 bg-slate-100">
-        <StyledView className="px-4 py-3">
-          <StyledText className="text-2xl font-bold">활동 기록</StyledText>
-        </StyledView>
         <StyledScrollView
           className="flex-1"
           showsVerticalScrollIndicator={false}

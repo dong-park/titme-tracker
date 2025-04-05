@@ -77,31 +77,6 @@ export function RecentHistory() {
                 className="flex-1"
                 showsVerticalScrollIndicator={false}
             >
-                {groupedActivities.length > 0 ? (
-                    groupedActivities.map((activity, index) => (
-                        <React.Fragment key={`${activity.emoji}-${activity.tag}-${index}`}>
-                            <ActivitySummaryItem 
-                                {...activity} 
-                                isSelected={selectedActivity === `${activity.emoji}-${activity.tag}`}
-                                onPress={() => toggleActivitySelection(`${activity.emoji}-${activity.tag}`)}
-                            />
-                            
-                            {selectedActivity === `${activity.emoji}-${activity.tag}` && (
-                                <StyledView className="bg-white mx-4 mb-4 p-4 rounded-b-xl shadow-sm -mt-2 border-t border-gray-100">
-                                    <ActivityHeatmap activityName={activity.tag} emoji={activity.emoji} />
-                                </StyledView>
-                            )}
-                        </React.Fragment>
-                    ))
-                ) : (
-                    <StyledView className="bg-white rounded-xl p-6 mx-4 my-2 shadow-sm items-center justify-center">
-                        <Ionicons name="calendar-outline" size={40} color="#CBD5E1" />
-                        <StyledText className="text-gray-400 mt-2 text-center">
-                            오늘 기록된 활동이 없습니다
-                        </StyledText>
-                    </StyledView>
-                )}
-                
                 {/* 최근 14일 활동 요약 */}
                 <StyledView className="bg-white rounded-xl p-4 mx-4 my-4 shadow-sm">
                     <StyledView className="flex-row justify-between items-center mb-4">
@@ -185,6 +160,32 @@ export function RecentHistory() {
                             ))}
                     </StyledView>
                 </StyledView>
+                
+                {groupedActivities.length > 0 ? (
+                    groupedActivities.map((activity, index) => (
+                        <React.Fragment key={`${activity.emoji}-${activity.tag}-${index}`}>
+                            <ActivitySummaryItem 
+                                {...activity} 
+                                isSelected={selectedActivity === `${activity.emoji}-${activity.tag}`}
+                                onPress={() => toggleActivitySelection(`${activity.emoji}-${activity.tag}`)}
+                            />
+                            
+                            {selectedActivity === `${activity.emoji}-${activity.tag}` && (
+                                <StyledView className="bg-white mx-4 mb-4 p-4 rounded-b-xl shadow-sm -mt-2 border-t border-gray-100">
+                                    <ActivityHeatmap activityName={activity.tag} emoji={activity.emoji} />
+                                </StyledView>
+                            )}
+                        </React.Fragment>
+                    ))
+                ) : (
+                    <StyledView className="bg-white rounded-xl p-6 mx-4 my-2 shadow-sm items-center justify-center">
+                        <Ionicons name="calendar-outline" size={40} color="#CBD5E1" />
+                        <StyledText className="text-gray-400 mt-2 text-center">
+                            오늘 기록된 활동이 없습니다
+                        </StyledText>
+                    </StyledView>
+                )}
+                
             </StyledScrollView>
         </GestureHandlerRootView>
     );
