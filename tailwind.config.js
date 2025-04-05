@@ -6,7 +6,12 @@ module.exports = {
     "./pomodoro/**/*.{js,jsx,ts,tsx}"
   ],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        tint: '#007AFF',
+        tintDark: '#FFFFFF',
+      },
+    },
   },
   plugins: [],
   corePlugins: {
