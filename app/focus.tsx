@@ -234,26 +234,26 @@ function FocusPage() {
   // 캐러셀에 표시할 화면들
   const screens: ReactElement[] = [
     // 첫 번째 콩알: 개요 화면
-    <StyledView key="overview" className="flex-1 px-4 bg-gradient-to-b from-[#F4F3FF] to-white">
+    <StyledView key="overview" className="flex-1 px-4 bg-gradient-to-b from-[#EEF2FF] to-white">
       {/* 타이머 디스플레이 */}
-      <StyledView className="bg-white/90 backdrop-blur-xl p-7 rounded-3xl shadow-md -mt-1 mx-2 border border-purple-100">
+      <StyledView className="bg-white/90 backdrop-blur-xl p-7 rounded-3xl shadow-md -mt-1 mx-2 border border-blue-100">
         <StyledView className="items-center">
           <StyledText className="text-4xl mb-4">{trackingActivity.emoji}</StyledText>
           <StyledText className="text-3xl font-semibold text-gray-800 mb-1">{trackingActivity.description}</StyledText>
         </StyledView>
         
         <StyledView>
-          <StyledText className="text-center text-base text-blue-600/90 font-medium px-4">
+          <StyledText className="text-center text-base text-[#4B7BF5] font-medium px-4">
             {getMotivationalMessage()}
           </StyledText>
           
-          <StyledView className="flex-row justify-center items-center mt-2 border-t border-gray-100/80 pt-6">
-            <StyledView className="items-center bg-gray-50/50 px-6 py-3 rounded-2xl">
+          <StyledView className="flex-row justify-center items-center mt-2 border-t border-blue-50 pt-6">
+            <StyledView className="items-center bg-blue-50/30 px-6 py-3 rounded-2xl">
               <StyledText className="text-gray-400 text-sm mb-1">시작 시간</StyledText>
               <StyledText className="text-2xl font-medium text-gray-800">{formatStartTime()}</StyledText>
             </StyledView>
             
-            <StyledView className="items-center bg-gray-50/50 px-6 py-3 rounded-2xl">
+            <StyledView className="items-center bg-blue-50/30 px-6 py-3 rounded-2xl ml-4">
               <StyledText className="text-gray-400 text-sm mb-1">세션</StyledText>
               <StyledText className="text-2xl font-medium text-gray-800">
                 {trackingActivity.focusSegments?.length || 1}
@@ -264,7 +264,7 @@ function FocusPage() {
       </StyledView>
       
       {/* 활동 히트맵 */}
-      <StyledView className="bg-white/95 backdrop-blur-xl p-5 rounded-3xl shadow-lg mt-5 mx-2 border border-gray-100">
+      <StyledView className="bg-white/95 backdrop-blur-xl p-5 rounded-3xl shadow-lg mt-5 mx-2 border border-blue-100">
         <StyledText className="text-lg font-semibold text-gray-800 mb-4 px-1">최근 30일 활동</StyledText>
         <ActivityHeatmap activityName={trackingActivity.description} emoji={trackingActivity.emoji} />
       </StyledView>
@@ -289,8 +289,8 @@ function FocusPage() {
   // 할일 목록이 활성화된 경우에만 화면 추가
   if (currentActivity?.todoListEnabled && currentActivityId) {
     screens.push(
-      <StyledView key="todo" className="flex-1 px-4">
-        <StyledView className="bg-white p-4 rounded-xl shadow-sm mt-4">
+      <StyledView key="todo" className="flex-1 px-4 bg-gradient-to-b from-[#EEF2FF] to-white">
+        <StyledView className="bg-white/90 backdrop-blur-xl p-5 rounded-3xl shadow-md mt-4 mx-2 border border-blue-100 flex-1">
           <StyledView className="flex-row items-center mb-4">
             <Ionicons name="list-outline" size={24} color="#10B981" />
             <StyledText className="text-xl font-bold ml-2">할 일 목록</StyledText>
@@ -304,40 +304,60 @@ function FocusPage() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StyledSafeAreaView className="flex-1 bg-slate-100" style={{ paddingBottom: 0 }}>
-        {screens.length > 1 ? (
-          <>
-            {/* 캐러셀 인디케이터 */}
-            <StyledView className="flex-row justify-center mt-2 mb-1">
-              {screens.map((_, index) => (
-                <StyledView 
-                  key={index} 
-                  className={`h-2 w-2 rounded-full mx-1 ${activeIndex === index ? 'bg-blue-500' : 'bg-gray-300'}`}
+        {/* 캐러셀 인디케이터 */}
+        <StyledView className="flex-row items-center justify-center mt-2 mb-1 relative">
+          <StyledTouchableOpacity 
+            className="absolute left-4" 
+            onPress={() => router.back()}
+          >
+            <Ionicons name="chevron-back" size={24} color="#4B7BF5" />
+          </StyledTouchableOpacity>
+
+          <StyledView className="flex-row gap-3">
+            {screens.map((_, index) => {
+              let icon = "home-outline";
+              if (index === 1 && currentActivity?.pomodoroEnabled) {
+                icon = "timer-outline";
+              } else if ((index === 2 && currentActivity?.pomodoroEnabled) || 
+                       (index === 1 && !currentActivity?.pomodoroEnabled)) {
+                icon = "list-outline";
+              }
+              
+              return (
+                <Ionicons
+                  key={index}
+                  name={icon as any}
+                  size={20}
+
+                  color={activeIndex === index ? "#4B7BF5" : "#D1D5DB"}
                 />
-              ))}
-            </StyledView>
-            
-            {/* 캐러셀 */}
-            <Carousel
-              width={width}
-              height={Dimensions.get('window').height - 120 - insets.bottom}
-              data={screens}
-              renderItem={({ item }) => item}
-              onSnapToItem={(index: number) => setActiveIndex(index)}
-              mode="parallax"
-              modeConfig={{
-                parallaxScrollingScale: 0.9,
-                parallaxScrollingOffset: 50,
-              }}
-            />
-          </>
+              );
+            })}
+          </StyledView>
+        </StyledView>
+        
+        {screens.length > 1 ? (
+          /* 캐러셀 */
+          <Carousel
+            width={width}
+            height={Dimensions.get('window').height - 120 - insets.bottom}
+            data={screens}
+            renderItem={({ item }) => item}
+            onSnapToItem={(index: number) => setActiveIndex(index)}
+            mode="parallax"
+            modeConfig={{
+              parallaxScrollingScale: 0.9,
+              parallaxScrollingOffset: 50,
+            }}
+            snapEnabled={true}
+            minScrollDistance={20}
+          />
         ) : (
-          // 단일 화면일 때는 직접 렌더링
           <StyledView 
             style={{ 
               height: Dimensions.get('window').height - 120 - insets.bottom,
               width: width,
-              transform: [{ scale: 0.9 }], // Carousel의 parallax 효과와 동일한 스케일 적용
-              marginTop: 12 // 인디케이터가 없을 때의 상단 여백
+              transform: [{ scale: 0.9 }],
             }}
           >
             {screens[0]}
