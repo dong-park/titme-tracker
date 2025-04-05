@@ -50,8 +50,6 @@ export function Timer() {
     const [slideAnim] = useState(new Animated.Value(0));
     const [isExpanded, setIsExpanded] = useState(false);
     const [expandAnim] = useState(new Animated.Value(0));
-    const [isMilestoneVisible, setIsMilestoneVisible] = useState(false);
-    const [milestoneOpacity] = useState(new Animated.Value(0));
     const {description, emoji, startDate, startTime} = activityState.trackingActivity || {};
     
     // 이전 활동 정보를 저장하는 ref 추가
@@ -219,26 +217,8 @@ export function Timer() {
                 if (newMilestone !== milestone) {
                     setMilestone(newMilestone);
                     setLastMilestoneTime(localElapsedTimeRef.current);
-                    setIsMilestoneVisible(true);
                     Vibration.vibrate(100);
                     playMilestoneAnimation();
-                    
-                    // 말풍선 페이드 인
-                    Animated.sequence([
-                        Animated.timing(milestoneOpacity, {
-                            toValue: 1,
-                            duration: 300,
-                            useNativeDriver: true
-                        }),
-                        Animated.delay(10000), // 10초 대기
-                        Animated.timing(milestoneOpacity, {
-                            toValue: 0,
-                            duration: 300,
-                            useNativeDriver: true
-                        })
-                    ]).start(() => {
-                        setIsMilestoneVisible(false);
-                    });
                 }
             }, 1000);
         } else if (timerInterval.current !== null) {
@@ -287,8 +267,6 @@ export function Timer() {
                     handleStopTracking={handleStopTracking}
                     togglePomodoroTimer={togglePomodoroTimer}
                     activityId={currentActivityId}
-                    isMilestoneVisible={isMilestoneVisible}
-                    milestoneOpacity={milestoneOpacity}
                 />
             </StyledView>
         </GestureHandlerRootView>

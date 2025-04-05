@@ -38,31 +38,27 @@ interface TimerDisplayProps {
     handleStopTracking: () => void;
     togglePomodoroTimer: () => void;
     activityId?: number;
-    isMilestoneVisible: boolean;
-    milestoneOpacity: Animated.Value;
 }
 
 export const TimerDisplay: React.FC<TimerDisplayProps> = ({
-                                                              emoji,
-                                                              milestone,
-                                                              timerScale,
-                                                              milestoneScale,
-                                                              description,
-                                                              displayedElapsedTime,
-                                                              formatElapsedTime,
-                                                              isExpanded,
-                                                              setIsExpanded,
-                                                              expandAnim,
-                                                              slideAnim,
-                                                              handleStopTracking,
-                                                              togglePomodoroTimer,
-                                                              activityId,
-                                                              isMilestoneVisible,
-                                                              milestoneOpacity
-                                                          }) => {
+    emoji,
+    milestone,
+    timerScale,
+    milestoneScale,
+    description,
+    displayedElapsedTime,
+    formatElapsedTime,
+    isExpanded,
+    setIsExpanded,
+    expandAnim,
+    slideAnim,
+    handleStopTracking,
+    togglePomodoroTimer,
+    activityId
+}) => {
     // 메모이제이션된 셀렉터 사용
     const activity = useSelector(
-      (state: RootState) => selectActivityById(state, activityId)
+        (state: RootState) => selectActivityById(state, activityId)
     );
 
     // 집중 페이지로 이동하는 함수
@@ -88,56 +84,6 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
 
     return (
         <StyledView className="relative">
-            {/* 말풍선 */}
-            {isMilestoneVisible && milestone && (
-                <StyledAnimatedView
-                    className="bg-[#4B7BF5] rounded-xl px-6 py-3 mb-2"
-                    style={{
-                        transform: [{translateY: slideAnim}, {scale: timerScale}],
-                        position: 'absolute',
-                        bottom: 70,
-                        alignSelf: 'center',
-                        width: 'auto',
-                        minWidth: 200,
-                        maxWidth: 400,
-                        shadowColor: "#000",
-                        shadowOffset: {
-                            width: 0,
-                            height: 2,
-                        },
-                        shadowOpacity: 0.1,
-                        shadowRadius: 3,
-                        elevation: 3,
-                        zIndex: 1,
-                        opacity: milestoneOpacity
-                    }}
-                >
-                    <StyledAnimatedText
-                        className="text-white text-base font-medium"
-                        style={{
-                            transform: [{scale: timerScale}]
-                        }}
-                    >
-                        {milestone}
-                    </StyledAnimatedText>
-                    {/* 말풍선 꼬리 */}
-                    <StyledView
-                        className="absolute bottom-[-6px] left-[50%] w-0 h-0"
-                        style={{
-                            transform: [{translateX: -6}],
-                            borderLeftWidth: 6,
-                            borderRightWidth: 6,
-                            borderTopWidth: 6,
-                            borderStyle: 'solid',
-                            backgroundColor: 'transparent',
-                            borderLeftColor: 'transparent',
-                            borderRightColor: 'transparent',
-                            borderTopColor: '#4B7BF5'
-                        }}
-                    />
-                </StyledAnimatedView>
-            )}
-
             {/* 타이머 메뉴바 */}
             <StyledTouchableOpacity
                 className="active:opacity-80"
