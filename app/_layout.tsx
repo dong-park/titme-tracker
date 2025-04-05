@@ -9,10 +9,6 @@ import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from '@/store/store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { View } from 'react-native';
-import { Timer } from '@/components/Timer';
-import { useSelector } from 'react-redux';
-import { RootState } from '@/store/store';
 import { ElapsedTimeProvider } from '@/components/ElapsedTimeContext';
 
 import {useColorScheme} from '@/hooks/useColorScheme';
@@ -29,31 +25,6 @@ const clearPersistedState = async () => {
     console.error('Error clearing persisted state:', error);
   }
 };
-
-// 타이머 래퍼 컴포넌트 - Provider 내부에서 Redux 상태에 접근
-function TimerWrapper() {
-  const pathname = usePathname();
-  const isTracking = useSelector((state: RootState) => state.activity.isTracking);
-  
-  // 타이머를 표시하지 않을 페이지 경로 목록
-  const hiddenPaths = ['/focus']; 
-  
-  // 추적 중이고 현재 경로가 숨김 경로에 포함되지 않을 때만 타이머 표시
-  const shouldShowTimer = isTracking && !hiddenPaths.includes(pathname);
-
-  if (!shouldShowTimer) return null;
-
-  return (
-    <View style={{
-      position: 'absolute',
-      bottom: 95,
-      right: 10,
-      zIndex: 100
-    }}>
-      <Timer />
-    </View>
-  );
-}
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -88,9 +59,6 @@ export default function RootLayout() {
               <Stack.Screen name="activity/input" options={{ headerShown: false, presentation: 'modal' }} />
               <Stack.Screen name="+not-found" />
             </Stack>
-            
-            {/* 플로팅 타이머 버튼 - Provider 내부에서 사용 */}
-            <TimerWrapper />
           </ElapsedTimeProvider>
         </ThemeProvider>
       </PersistGate>

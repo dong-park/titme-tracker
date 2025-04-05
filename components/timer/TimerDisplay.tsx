@@ -96,11 +96,10 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                         transform: [{translateY: slideAnim}, {scale: timerScale}],
                         position: 'absolute',
                         bottom: 70,
-                        right: 0,
+                        alignSelf: 'center',
                         width: 'auto',
                         minWidth: 200,
                         maxWidth: 400,
-                        marginLeft: 24,
                         shadowColor: "#000",
                         shadowOffset: {
                             width: 0,
@@ -110,7 +109,6 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                         shadowRadius: 3,
                         elevation: 3,
                         zIndex: 1,
-                        alignSelf: 'flex-end',
                         opacity: milestoneOpacity
                     }}
                 >
@@ -124,8 +122,9 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                     </StyledAnimatedText>
                     {/* 말풍선 꼬리 */}
                     <StyledView
-                        className="absolute bottom-[-6px] right-[28px] w-0 h-0"
+                        className="absolute bottom-[-6px] left-[50%] w-0 h-0"
                         style={{
+                            transform: [{translateX: -6}],
                             borderLeftWidth: 6,
                             borderRightWidth: 6,
                             borderTopWidth: 6,
@@ -139,54 +138,36 @@ export const TimerDisplay: React.FC<TimerDisplayProps> = ({
                 </StyledAnimatedView>
             )}
 
-            {/* 타이머 버튼 */}
+            {/* 타이머 메뉴바 */}
             <StyledTouchableOpacity
                 className="active:opacity-80"
                 onPress={navigateToFocusPage}
             >
                 <StyledAnimatedView
-                    className="rounded-full shadow-lg"
+                    className="flex-row items-center rounded-lg"
                     style={{
                         transform: [{translateY: slideAnim}, {scale: timerScale}],
-                        width: 90,
-                        height: 90,
-                        padding: 12,
+                        paddingHorizontal: 20,
+                        paddingVertical: 6,
                         shadowColor: "#000",
                         shadowOffset: {
                             width: 0,
                             height: 2,
                         },
-                        shadowOpacity: 0.08,
-                        shadowRadius: 4,
-                        elevation: 3,
-                        borderWidth: 1,
-                        borderColor: 'rgba(230, 230, 230, 0.4)',
-                        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+                        shadowOpacity: 0.05,
+                        shadowRadius: 2,
+                        elevation: 2,
+                        backgroundColor: '#4B7BF5',
                     }}
                 >
-                    <StyledView 
-                        className="flex-1 items-center justify-center"
-                        style={{
-                            backgroundColor: 'transparent',
-                            borderRadius: 100,
-                            width: '100%',
-                            height: '100%',
-                        }}
+                    <StyledText className="text-lg mr-2">
+                        {emoji}
+                    </StyledText>
+                    <StyledText 
+                        className="text-base font-bold text-white" 
                     >
-                        <StyledText>
-                            {emoji}
-                        </StyledText>
-                        <StyledText 
-                            className="text-base font-bold text-center" 
-                            style={{
-                                width: 75,
-                                textAlign: 'center',
-                                color: '#333333',
-                            }}
-                        >
-                            {formatTimeForButton(displayedElapsedTime)}
-                        </StyledText>
-                    </StyledView>
+                        {formatTimeForButton(displayedElapsedTime)}
+                    </StyledText>
                 </StyledAnimatedView>
             </StyledTouchableOpacity>
         </StyledView>
