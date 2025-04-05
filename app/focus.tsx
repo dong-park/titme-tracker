@@ -234,35 +234,28 @@ function FocusPage() {
   // 캐러셀에 표시할 화면들
   const screens: ReactElement[] = [
     // 첫 번째 콩알: 개요 화면
-    <StyledView key="overview" className="flex-1 px-4">
+    <StyledView key="overview" className="flex-1 px-4 bg-gradient-to-b from-[#F4F3FF] to-white">
       {/* 타이머 디스플레이 */}
-      <StyledView className="bg-white p-5 rounded-xl shadow-sm mt-4">
-        <StyledView className="items-center mb-3">
-          <StyledText className="text-5xl mb-2">{trackingActivity.emoji}</StyledText>
-          <StyledText className="text-2xl mb-2">{trackingActivity.description}</StyledText>
+      <StyledView className="bg-white/90 backdrop-blur-xl p-7 rounded-3xl shadow-md -mt-1 mx-2 border border-purple-100">
+        <StyledView className="items-center">
+          <StyledText className="text-4xl mb-4">{trackingActivity.emoji}</StyledText>
+          <StyledText className="text-3xl font-semibold text-gray-800 mb-1">{trackingActivity.description}</StyledText>
         </StyledView>
         
         <StyledView>
-          <StyledText className="text-center text-lg text-blue-600 font-medium">
+          <StyledText className="text-center text-base text-blue-600/90 font-medium px-4">
             {getMotivationalMessage()}
           </StyledText>
           
-          <StyledView className="flex-row justify-between mt-6">
-            <StyledView className="items-center">
-              <StyledText className="text-gray-500 text-sm">시작 시간</StyledText>
-              <StyledText className="text-lg font-medium">{formatStartTime()}</StyledText>
+          <StyledView className="flex-row justify-center items-center mt-2 border-t border-gray-100/80 pt-6">
+            <StyledView className="items-center bg-gray-50/50 px-6 py-3 rounded-2xl">
+              <StyledText className="text-gray-400 text-sm mb-1">시작 시간</StyledText>
+              <StyledText className="text-2xl font-medium text-gray-800">{formatStartTime()}</StyledText>
             </StyledView>
             
-            <StyledView className="items-center">
-              <StyledText className="text-gray-500 text-sm">집중 시간</StyledText>
-              <StyledText className="text-lg font-medium">
-                {formatElapsedTime(displayedElapsedTime)} 
-              </StyledText>
-            </StyledView>
-            
-            <StyledView className="items-center">
-              <StyledText className="text-gray-500 text-sm">세션</StyledText>
-              <StyledText className="text-lg font-medium">
+            <StyledView className="items-center bg-gray-50/50 px-6 py-3 rounded-2xl">
+              <StyledText className="text-gray-400 text-sm mb-1">세션</StyledText>
+              <StyledText className="text-2xl font-medium text-gray-800">
                 {trackingActivity.focusSegments?.length || 1}
               </StyledText>
             </StyledView>
@@ -271,15 +264,17 @@ function FocusPage() {
       </StyledView>
       
       {/* 활동 히트맵 */}
-      <StyledView className="bg-white p-4 rounded-xl shadow-sm mt-6">
-        <StyledText className="text-lg font-bold mb-4">최근 14일 활동</StyledText>
+      <StyledView className="bg-white/95 backdrop-blur-xl p-5 rounded-3xl shadow-lg mt-5 mx-2 border border-gray-100">
+        <StyledText className="text-lg font-semibold text-gray-800 mb-4 px-1">최근 30일 활동</StyledText>
         <ActivityHeatmap activityName={trackingActivity.description} emoji={trackingActivity.emoji} />
       </StyledView>
     </StyledView>,
-    
-    // 두 번째 콩알: 뽀모도로 타이머
-    <StyledView key="pomodoro" className="flex-1 px-4">
-      {currentActivity?.pomodoroEnabled ? (
+  ];
+
+  // 뽀모도로 타이머가 활성화된 경우에만 화면 추가
+  if (currentActivity?.pomodoroEnabled) {
+    screens.push(
+      <StyledView key="pomodoro" className="flex-1 px-4">
         <StyledView className="bg-white p-4 rounded-xl shadow-sm mt-4">
           <StyledView className="flex-row items-center mb-4">
             <Ionicons name="timer-outline" size={24} color="#3B82F6" />
@@ -287,19 +282,14 @@ function FocusPage() {
           </StyledView>
           <PomodoroTimer onClose={() => {}} />
         </StyledView>
-      ) : (
-        <StyledView className="flex-1 items-center justify-center">
-          <Ionicons name="timer-outline" size={60} color="#CBD5E1" />
-          <StyledText className="text-gray-400 mt-4 text-center">
-            이 활동에는 뽀모도로 타이머가 활성화되어 있지 않습니다
-          </StyledText>
-        </StyledView>
-      )}
-    </StyledView>,
-    
-    // 세 번째 콩알: 투두 리스트
-    <StyledView key="todo" className="flex-1 px-4">
-      {currentActivity?.todoListEnabled && currentActivityId ? (
+      </StyledView>
+    );
+  }
+
+  // 할일 목록이 활성화된 경우에만 화면 추가
+  if (currentActivity?.todoListEnabled && currentActivityId) {
+    screens.push(
+      <StyledView key="todo" className="flex-1 px-4">
         <StyledView className="bg-white p-4 rounded-xl shadow-sm mt-4">
           <StyledView className="flex-row items-center mb-4">
             <Ionicons name="list-outline" size={24} color="#10B981" />
@@ -307,79 +297,78 @@ function FocusPage() {
           </StyledView>
           <TodoList activityId={currentActivityId} />
         </StyledView>
-      ) : (
-        <StyledView className="flex-1 items-center justify-center">
-          <Ionicons name="list-outline" size={60} color="#CBD5E1" />
-          <StyledText className="text-gray-400 mt-4 text-center">
-            이 활동에는 할 일 목록이 활성화되어 있지 않습니다
-          </StyledText>
-        </StyledView>
-      )}
-    </StyledView>
-  ];
+      </StyledView>
+    );
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <StyledSafeAreaView className="flex-1 bg-slate-100" style={{ paddingBottom: 0 }}>
-        {/* <StyledView className="flex-row items-center justify-between px-4 py-3 bg-white shadow-sm">
-          <StyledTouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="chevron-back" size={24} color="#333" />
-          </StyledTouchableOpacity>
-          <StyledText className="text-lg font-bold">{trackingActivity.emoji} {trackingActivity.description}</StyledText>
-          <StyledTouchableOpacity onPress={handleStopTracking}>
-            <Ionicons name="close-outline" size={24} color="#EF4444" />
-          </StyledTouchableOpacity>
-        </StyledView> */}
-        
-        {/* 캐러셀 인디케이터 */}
-        <StyledView className="flex-row justify-center mt-2 mb-1">
-          {screens.map((_, index) => (
-            <StyledView 
-              key={index} 
-              className={`h-2 w-2 rounded-full mx-1 ${activeIndex === index ? 'bg-blue-500' : 'bg-gray-300'}`}
+        {screens.length > 1 ? (
+          <>
+            {/* 캐러셀 인디케이터 */}
+            <StyledView className="flex-row justify-center mt-2 mb-1">
+              {screens.map((_, index) => (
+                <StyledView 
+                  key={index} 
+                  className={`h-2 w-2 rounded-full mx-1 ${activeIndex === index ? 'bg-blue-500' : 'bg-gray-300'}`}
+                />
+              ))}
+            </StyledView>
+            
+            {/* 캐러셀 */}
+            <Carousel
+              width={width}
+              height={Dimensions.get('window').height - 120 - insets.bottom}
+              data={screens}
+              renderItem={({ item }) => item}
+              onSnapToItem={(index: number) => setActiveIndex(index)}
+              mode="parallax"
+              modeConfig={{
+                parallaxScrollingScale: 0.9,
+                parallaxScrollingOffset: 50,
+              }}
             />
-          ))}
-        </StyledView>
-        
-        {/* 캐러셀 */}
-        <Carousel
-          width={width}
-          height={Dimensions.get('window').height - 120 - insets.bottom} // 하단 영역 높이 조정
-          data={screens}
-          renderItem={({ item }) => item}
-          onSnapToItem={(index: number) => setActiveIndex(index)}
-          mode="parallax"
-          modeConfig={{
-            parallaxScrollingScale: 0.9,
-            parallaxScrollingOffset: 50,
-          }}
-        />
+          </>
+        ) : (
+          // 단일 화면일 때는 직접 렌더링
+          <StyledView 
+            style={{ 
+              height: Dimensions.get('window').height - 120 - insets.bottom,
+              width: width,
+              transform: [{ scale: 0.9 }], // Carousel의 parallax 효과와 동일한 스케일 적용
+              marginTop: 12 // 인디케이터가 없을 때의 상단 여백
+            }}
+          >
+            {screens[0]}
+          </StyledView>
+        )}
 
-        {/* 하단 탭바 스타일의 버튼 영역 - 더 간결하게 */}
+        {/* 하단 탭바 스타일의 버튼 영역 */}
         <StyledView 
-          className="border-t border-gray-200 bg-white/95 backdrop-blur-lg"
+          className="bg-[#4B7BF5]"
           style={{ 
             paddingBottom: insets.bottom, // 안전 영역만큼 패딩 추가
           }}
         >
-          <StyledView className="flex-row justify-between items-center h-14 px-5">
-            <StyledTouchableOpacity onPress={() => router.back()}>
-              <StyledView className="flex-row items-center">
-                <Ionicons name="chevron-back" size={18} color="#007AFF" />
-                <StyledText className="text-[#007AFF] font-medium ml-1">뒤로</StyledText>
-              </StyledView>
-            </StyledTouchableOpacity>
-
-            <StyledView className="flex-1 items-center justify-center">
-              <StyledText className="text-base font-semibold text-gray-800">{trackingActivity.emoji}{trackingActivity.description}</StyledText>
+          <StyledView className="flex-row items-center justify-between px-4 py-2">
+            <StyledView className="flex-row items-center flex-1">
+              <StyledText className="text-lg mr-2">
+                {trackingActivity.emoji}
+              </StyledText>
+              <StyledText className="text-base font-medium text-white mr-2">
+                {trackingActivity.description}
+              </StyledText>
+              <StyledText className="text-base font-bold text-white">
+                {formatElapsedTime(displayedElapsedTime)}
+              </StyledText>
             </StyledView>
             
             <StyledTouchableOpacity 
-              className="flex-row items-center justify-center bg-[#FF3B30]/10 px-4 py-2 rounded-full" 
+              className="p-2 bg-white/20 rounded-full"
               onPress={handleStopTracking}
             >
-              <Ionicons name="stop-circle" size={18} color="#FF3B30" />
-              <StyledText className="text-[#FF3B30] font-medium ml-1">종료</StyledText>
+              <Ionicons name="stop" size={20} color="white" />
             </StyledTouchableOpacity>
           </StyledView>
         </StyledView>

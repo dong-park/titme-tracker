@@ -24,16 +24,16 @@ export function ActivityHeatmap({ activityName, emoji }: ActivityHeatmapProps) {
   const [heatmapData, setHeatmapData] = useState<DayData[]>([]);
   
   useEffect(() => {
-    // 최근 14일 데이터 생성
+    // 최근 30일 데이터 생성
     const today = new Date();
-    const last14Days: DayData[] = [];
+    const last30Days: DayData[] = [];
     
-    for (let i = 13; i >= 0; i--) {
+    for (let i = 29; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(today.getDate() - i);
       const dateString = date.toISOString().split('T')[0];
       
-      last14Days.push({
+      last30Days.push({
         date: dateString,
         count: 0,
         minutes: 0,
@@ -49,50 +49,45 @@ export function ActivityHeatmap({ activityName, emoji }: ActivityHeatmapProps) {
     // 날짜별 데이터 집계
     filteredActivities.forEach(activity => {
       const activityDate = new Date(activity.startDate).toISOString().split('T')[0];
-      const dayIndex = last14Days.findIndex(day => day.date === activityDate);
+      const dayIndex = last30Days.findIndex(day => day.date === activityDate);
       
       if (dayIndex !== -1) {
-        last14Days[dayIndex].count += 1;
-        last14Days[dayIndex].minutes += Math.floor(activity.elapsedTime / 60);
+        last30Days[dayIndex].count += 1;
+        last30Days[dayIndex].minutes += Math.floor(activity.elapsedTime / 60);
         
         // 강도 계산 (분 단위 기준)
-        const minutes = last14Days[dayIndex].minutes;
+        const minutes = last30Days[dayIndex].minutes;
         if (minutes === 0) {
-          last14Days[dayIndex].intensity = 0;
+          last30Days[dayIndex].intensity = 0;
         } else if (minutes < 30) {
-          last14Days[dayIndex].intensity = 1;
+          last30Days[dayIndex].intensity = 1;
         } else if (minutes < 60) {
-          last14Days[dayIndex].intensity = 2;
+          last30Days[dayIndex].intensity = 2;
         } else if (minutes < 120) {
-          last14Days[dayIndex].intensity = 3;
+          last30Days[dayIndex].intensity = 3;
         } else {
-          last14Days[dayIndex].intensity = 4;
+          last30Days[dayIndex].intensity = 4;
         }
       }
     });
     
-    setHeatmapData(last14Days);
+    setHeatmapData(last30Days);
   }, [activityState.activities, activityName, emoji]);
-  
-  // 요일 레이블
-  const weekdayLabels = ['일', '월', '화', '수', '목', '금', '토'];
   
   // 현재 날짜의 요일 구하기
   const today = new Date();
   const currentDayOfWeek = today.getDay(); // 0: 일요일, 1: 월요일, ...
   
-  // 2주 전 날짜의 요일 구하기
-  const twoWeeksAgo = new Date(today);
-  twoWeeksAgo.setDate(today.getDate() - 13);
-  const startDayOfWeek = twoWeeksAgo.getDay();
+  // 30일 전 날짜의 요일 구하기
+  const thirtyDaysAgo = new Date(today);
+  thirtyDaysAgo.setDate(today.getDate() - 29);
+  const startDayOfWeek = thirtyDaysAgo.getDay();
   
-  // 요일별 데이터 그룹화
-  const weekdayGroups: DayData[][] = Array(7).fill(0).map(() => []);
-  
-  heatmapData.forEach((day, index) => {
-    const dayOfWeek = (startDayOfWeek + index) % 7;
-    weekdayGroups[dayOfWeek].push(day);
-  });
+  // 데이터를 6개의 행으로 그룹화 (5일씩)
+  const rowGroups: DayData[][] = [];
+  for (let i = 0; i < 6; i++) {
+    rowGroups.push(heatmapData.slice(i * 5, (i + 1) * 5));
+  }
   
   // 색상 강도에 따른 스타일 클래스
   const getIntensityClass = (intensity: number) => {
@@ -143,28 +138,15 @@ export function ActivityHeatmap({ activityName, emoji }: ActivityHeatmapProps) {
       
       {/* 히트맵 */}
       <StyledView className="flex-row mt-2">
-        {/* 요일 레이블 */}
-        <StyledView className="mr-2 justify-around">
-          {weekdayLabels.map((label, index) => (
-            <StyledText key={label} className="text-xs text-gray-500 h-6 text-center">
-              {label}
-            </StyledText>
-          ))}
-        </StyledView>
-        
         {/* 히트맵 그리드 */}
-        <StyledView className="flex-1 flex-row">
-          {weekdayGroups.map((group, weekdayIndex) => (
-            <StyledView key={`weekday-${weekdayIndex}`} className="flex-1">
+        <StyledView className="flex-1">
+          {rowGroups.map((group, rowIndex) => (
+            <StyledView key={`row-${rowIndex}`} className="flex-row mb-1">
               {group.map((day, dayIndex) => (
                 <StyledView 
                   key={`day-${day.date}`} 
-                  className={`h-6 mx-0.5 my-0.5 rounded-sm ${getIntensityClass(day.intensity)}`}
-                >
-                  {day.count > 0 && (
-                    <StyledView className="absolute top-0 right-0 w-2 h-2 bg-blue-500 rounded-full" />
-                  )}
-                </StyledView>
+                  className={`h-8 flex-1 mx-0.5 rounded-sm ${getIntensityClass(day.intensity)}`}
+                />
               ))}
             </StyledView>
           ))}
