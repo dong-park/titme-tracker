@@ -43,6 +43,8 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
   const [localTodos, setLocalTodos] = useState<TodoItemType[]>([]);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
   const editInputRef = useRef<TextInput>(null);
   
   // todos가 변경될 때 localTodos 업데이트 (editingTodoId가 null일 때만)
@@ -201,8 +203,96 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
     setEditingText('');
   };
   
+  // 편집 모드 진입
+  const handleEnterEditMode = () => {
+    // 애니메이션 효과 적용
+    LayoutAnimation.configureNext(animationConfig);
+    setIsEditMode(true);
+  };
+  
+  // 편집 모드 종료
+  const handleExitEditMode = () => {
+    // 애니메이션 효과 적용
+    LayoutAnimation.configureNext(animationConfig);
+    setIsEditMode(false);
+    setSelectedTodoIds([]);
+  };
+  
+  // 할일 선택/선택 해제
+  const handleSelectTodo = (todoId: string) => {
+    setSelectedTodoIds(prev => {
+      if (prev.includes(todoId)) {
+        return prev.filter(id => id !== todoId);
+      } else {
+        return [...prev, todoId];
+      }
+    });
+  };
+  
+  // 선택된 할일 삭제
+  const deleteSelectedTodos = () => {
+    if (selectedTodoIds.length === 0) return;
+    
+    Alert.alert(
+      "할일 삭제",
+      `선택한 ${selectedTodoIds.length}개의 할일을 삭제하시겠습니까?`,
+      [
+        {
+          text: "취소",
+          style: "cancel"
+        },
+        {
+          text: "삭제",
+          style: "destructive",
+          onPress: () => {
+            // 선택된 모든 할일 삭제
+            selectedTodoIds.forEach(todoId => {
+              dispatch(deleteTodo({
+                activityId,
+                todoId
+              }));
+            });
+            
+            // 편집 모드 종료 및 선택 초기화
+            handleExitEditMode();
+          }
+        }
+      ]
+    );
+  };
+  
+  // 편집 중 모드 변경 시 편집 취소
+  useEffect(() => {
+    if (isEditMode && editingTodoId !== null) {
+      handleCancelEdit();
+    }
+  }, [isEditMode]);
+  
   return (
     <GestureHandlerRootView>
+      {isEditMode && (
+        <StyledView className="flex-row justify-between items-center mb-2 px-2">
+          <StyledText className="text-base font-medium">
+            {selectedTodoIds.length}개 선택됨
+          </StyledText>
+          <StyledView className="flex-row">
+            <StyledTouchableOpacity
+              className="mr-3 px-3 py-1 bg-red-500 rounded-lg"
+              onPress={deleteSelectedTodos}
+              disabled={selectedTodoIds.length === 0}
+            >
+              <StyledText className="text-white">삭제</StyledText>
+            </StyledTouchableOpacity>
+            <StyledTouchableOpacity
+              className="px-3 py-1 bg-gray-300 rounded-lg"
+              onPress={handleExitEditMode}
+            >
+              <StyledText>취소</StyledText>
+            </StyledTouchableOpacity>
+          </StyledView>
+        </StyledView>
+      )}
+      
       <DraggableFlatList
         data={localTodos}
         onDragEnd={handleReorderTodos}
@@ -212,7 +302,7 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
             todo={item}
             activityId={activityId}
             activity={activity || null}
-            onToggle={handleToggleTodo}
+            onToggle={isEditMode ? handleSelectTodo : handleToggleTodo}
             onDelete={handleStartDelete}
             onDragStart={drag}
             isActive={isActive}
@@ -224,6 +314,9 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
             onCancelEdit={handleCancelEdit}
             onEditTextChange={setEditingText}
             editInputRef={editInputRef}
+            isEditMode={isEditMode}
+            isSelected={selectedTodoIds.includes(item.id)}
+            onEnterEditMode={handleEnterEditMode}
           />
         )}
         ListEmptyComponent={
