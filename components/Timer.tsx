@@ -3,6 +3,7 @@ import { useElapsedTime } from "@/components/ElapsedTimeContext";
 import { setElapsedTime as setActivityElapsedTime, stopTracking } from "@/store/activitySlice";
 import { resetAll } from "@/store/pomodoroSlice";
 import { RootState } from "@/store/store";
+import { stopTrackingTodo } from "@/store/todoSlice";
 import { createSelector } from '@reduxjs/toolkit';
 import { styled } from "nativewind";
 import React, { useCallback, useEffect, useRef, useState } from "react";
@@ -34,6 +35,22 @@ const selectCurrentActivityId = createSelector(
     }
 );
 
+// 현재 진행 중인 할일을 선택하는 셀렉터 추가
+const selectCurrentTodo = createSelector(
+    [
+        (state: RootState) => state.todos.todosByActivity,
+        (state: RootState) => selectCurrentActivityId(state)
+    ],
+    (todosByActivity, currentActivityId) => {
+        if (!currentActivityId) return undefined;
+        
+        const activityTodos = todosByActivity[currentActivityId];
+        if (!activityTodos) return undefined;
+        
+        return activityTodos.find(todo => todo.isTracking);
+    }
+);
+
 export function Timer() {
     const activityState = useSelector((state: RootState) => state.activity);
     const dispatch = useDispatch();
@@ -41,6 +58,7 @@ export function Timer() {
     const elapsedTime = useSelector((state: RootState) => state.activity.elapsedTime);
     const {localElapsedTimeRef, setLocalElapsedTime} = useElapsedTime();
     const trackingActivity = useSelector((state: RootState) => state.activity.trackingActivity);
+    const currentTodo = useSelector(selectCurrentTodo);
 
     const [displayedElapsedTime, setDisplayedElapsedTime] = useState(elapsedTime);
     const [milestone, setMilestone] = useState("집중 시작!");
@@ -128,6 +146,14 @@ export function Timer() {
 
     const handleStopTracking = useCallback(() => {
         if (activityState.trackingActivity) {
+            // 현재 활동 중인 할일이 있다면 할일의 상태도 함께 종료
+            if (currentTodo && currentActivityId) {
+                dispatch(stopTrackingTodo({
+                    activityId: currentActivityId,
+                    todoId: currentTodo.id
+                }));
+            }
+
             dispatch(stopTracking());
             Vibration.vibrate(500);
             localElapsedTimeRef.current = 0;
@@ -138,7 +164,7 @@ export function Timer() {
             // 포모도로 타이머도 초기화
             dispatch(resetAll());
         }
-    }, [activityState.trackingActivity, dispatch, localElapsedTimeRef]);
+    }, [activityState.trackingActivity, currentTodo, currentActivityId, dispatch, localElapsedTimeRef]);
 
     // 마일스톤 메시지 생성 함수
     const getMilestoneMessage = useCallback((seconds: number, lastMilestone: number) => {
@@ -251,7 +277,7 @@ export function Timer() {
                     emoji={emoji}
                     milestone={milestone}
                     stopButtonScale={stopButtonScale}
-                    description={description}
+                    description={currentTodo ? `${description} - ${currentTodo.text}` : description}
                     displayedElapsedTime={displayedElapsedTime}
                     formatElapsedTime={formatElapsedTime}
                     handleStopTracking={handleStopTracking}

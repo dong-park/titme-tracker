@@ -37,6 +37,9 @@ const selectTodosByActivityId = createSelector(
 export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDelete, onCancelDelete }: TodoListProps) {
   const dispatch = useDispatch();
   const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
+  const activity = useSelector((state: RootState) => 
+    state.activity.menu.find(item => item.id === activityId)
+  );
   const [localTodos, setLocalTodos] = useState<TodoItemType[]>([]);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
@@ -199,39 +202,37 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
   };
   
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <StyledView className="flex-1">
-        <DraggableFlatList
-          data={localTodos}
-          onDragEnd={handleReorderTodos}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={{ flexGrow: 1, minHeight: '100%' }}
-          ListEmptyComponent={
-            <StyledView className="flex-1 justify-center items-center">
-              <StyledText className="text-gray-400 text-base">할 일이 없습니다.</StyledText>
-            </StyledView>
-          }
-          renderItem={({ item, drag, isActive }) => (
-            <TodoItem
-              todo={item}
-              onToggle={handleToggleTodo}
-              onDelete={() => {
-                if (onCancelDelete) onCancelDelete(item.id);
-              }}
-              onDragStart={drag}
-              isActive={isActive}
-              isEditing={editingTodoId === item.id}
-              isPendingDelete={pendingDeleteIds?.includes(item.id) || false}
-              editingText={editingText}
-              onStartEdit={() => handleStartEdit(item)}
-              onFinishEdit={handleFinishEdit}
-              onCancelEdit={handleCancelEdit}
-              onEditTextChange={setEditingText}
-              editInputRef={editInputRef}
-            />
-          )}
-        />
-      </StyledView>
+    <GestureHandlerRootView>
+      <DraggableFlatList
+        data={localTodos}
+        onDragEnd={handleReorderTodos}
+        keyExtractor={item => item.id}
+        renderItem={({ item, drag, isActive }) => (
+          <TodoItem
+            todo={item}
+            activityId={activityId}
+            activity={activity || null}
+            onToggle={handleToggleTodo}
+            onDelete={handleStartDelete}
+            onDragStart={drag}
+            isActive={isActive}
+            isEditing={editingTodoId === item.id}
+            isPendingDelete={pendingDeleteIds?.includes(item.id) || false}
+            editingText={editingText}
+            onStartEdit={() => handleStartEdit(item)}
+            onFinishEdit={handleFinishEdit}
+            onCancelEdit={handleCancelEdit}
+            onEditTextChange={setEditingText}
+            editInputRef={editInputRef}
+          />
+        )}
+        ListEmptyComponent={
+          <StyledView className="items-center justify-center py-8">
+            <StyledText className="text-gray-500">할일이 없습니다.</StyledText>
+            <StyledText className="text-gray-500">새로운 할일을 추가해보세요!</StyledText>
+          </StyledView>
+        }
+      />
     </GestureHandlerRootView>
   );
 } 

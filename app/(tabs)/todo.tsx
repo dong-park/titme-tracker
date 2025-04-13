@@ -82,20 +82,13 @@ export default function TodoScreen() {
 
   const ActivityItem = ({ activity, isSelected }: { activity: MenuActivity, isSelected: boolean }) => (
     <StyledTouchableOpacity
-      className={`px-3 py-2 rounded-lg mr-2 
-      ${isSelected 
-        ? `bg-blue-500 shadow-sm`
-        : 'bg-white/80 border border-gray-200'
-      }`}
+      className={`bg-white px-3 py-1.5 rounded-full mr-2 border ${isSelected
+        ? `bg-[${Colors[colorScheme ?? 'light'].tint}] border-[${Colors[colorScheme ?? 'light'].tint}]`
+        : 'border-gray-300'
+        }`}
       onPress={() => setSelectedActivityId(activity.id)}
     >
-      <StyledText 
-        className={`text-sm font-medium 
-        ${isSelected 
-          ? 'text-white' 
-          : 'text-gray-700'
-        }`}
-      >
+      <StyledText className={`text-xs font-medium `}>
         {activity.emoji} {activity.name}
       </StyledText>
     </StyledTouchableOpacity>

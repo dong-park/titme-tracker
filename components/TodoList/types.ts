@@ -1,5 +1,6 @@
 import { TextInput } from 'react-native';
 import { TodoItem as TodoItemType } from '@/store/todoSlice';
+import { MenuActivity } from '@/store/activitySlice';
 
 // 컴포넌트 props 타입 정의
 export interface TodoListProps {
@@ -13,10 +14,20 @@ export interface TodoListProps {
 // TodoItem 컴포넌트 Props 인터페이스
 export interface TodoItemProps {
   todo: TodoItemType;
-  onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
-  onDragStart: () => void;
-  isActive: boolean;
+  activityId: number;
+  activity: MenuActivity | null;
+  onToggle: (todoId: string) => void;
+  onStartDelete: (todoId: string) => void;
+  onStartEdit: (todo: TodoItemType) => void;
+  onFinishEdit: () => void;
+  onCancelEdit: () => void;
+  onEditTextChange: (text: string) => void;
+  isEditing: boolean;
+  editingText: string;
+  pendingDelete: boolean;
+  onDragStart?: () => void;
+  isActive?: boolean;
+  editInputRef: React.RefObject<TextInput>;
 }
 
 // 카테고리 컴포넌트 Props 인터페이스

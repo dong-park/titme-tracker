@@ -7,6 +7,7 @@ export interface TodoItem {
   text: string;
   completed: boolean;
   date: string;
+  isTracking?: boolean;
 }
 
 interface TodoState {
@@ -35,6 +36,7 @@ export const todoSlice = createSlice({
         text,
         completed: false,
         date: new Date().toISOString(),
+        isTracking: false
       });
     },
     
@@ -86,6 +88,31 @@ export const todoSlice = createSlice({
         todo.text = text;
       }
     },
+    
+    startTrackingTodo: (state, action: PayloadAction<{ activityId: number; todoId: string }>) => {
+      const { activityId, todoId } = action.payload;
+      
+      // 모든 할일의 isTracking을 false로 설정
+      Object.values(state.todosByActivity).forEach(todos => {
+        todos.forEach(todo => {
+          todo.isTracking = false;
+        });
+      });
+      
+      // 선택된 할일의 isTracking을 true로 설정
+      const todo = state.todosByActivity[activityId]?.find(todo => todo.id === todoId);
+      if (todo) {
+        todo.isTracking = true;
+      }
+    },
+    
+    stopTrackingTodo: (state, action: PayloadAction<{ activityId: number; todoId: string }>) => {
+      const { activityId, todoId } = action.payload;
+      const todo = state.todosByActivity[activityId]?.find(todo => todo.id === todoId);
+      if (todo) {
+        todo.isTracking = false;
+      }
+    },
   },
 });
 
@@ -95,7 +122,9 @@ export const {
   deleteTodo,
   initializeActivity,
   reorderTodos,
-  updateTodo
+  updateTodo,
+  startTrackingTodo,
+  stopTrackingTodo
 } = todoSlice.actions;
 
 export default todoSlice.reducer; 
