@@ -248,21 +248,13 @@ export function TodoList({
     // 새로 추가된 할일인 경우 (빈 텍스트 허용)
     const isNewTodo = editingTodo.text === '';
     
-    if (!isNewTodo && editingText.trim() === '') {
-      // 빈 텍스트인 경우 할일 삭제
-      dispatch(deleteTodo({
-        activityId: targetActivityId,
-        todoId: editingTodoId
-      }));
-      setEditingTodoId(null);
-      setEditingText('');
-      return;
-    }
-
+    // 빈 텍스트여도 할일 유지 (삭제하지 않음)
+    const textToSave = editingText.trim() === '' ? ' ' : editingText.trim();
+    
     dispatch(updateTodo({
       activityId: targetActivityId,
       todoId: editingTodoId,
-      text: editingText.trim()
+      text: textToSave
     }));
 
     setEditingTodoId(null);
@@ -282,11 +274,18 @@ export function TodoList({
       ? editingTodo.activityId || activityId
       : activityId;
     
-    // 빈 텍스트인 경우 할일 삭제
-    if (editingText.trim() === '') {
+    // 새로 추가된 할일이고 텍스트가 비어있는 경우에만 삭제
+    if (editingTodo.text === '' && editingText.trim() === '') {
       dispatch(deleteTodo({
         activityId: targetActivityId,
         todoId: editingTodoId
+      }));
+    } else if (editingText.trim() === '') {
+      // 기존 할일을 비워서 편집한 경우, 공백 한 칸으로 저장
+      dispatch(updateTodo({
+        activityId: targetActivityId,
+        todoId: editingTodoId,
+        text: ' '
       }));
     }
     
