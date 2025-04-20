@@ -6,6 +6,7 @@ import { MenuActivity } from '@/store/activitySlice';
 export interface TodoListProps {
   activityId: number;
   onAddTodo?: (addTodoFn: () => void) => void;
+  onEnterDeleteMode?: (enterDeleteModeFn: () => void) => void;
   pendingDeleteIds?: string[];
   onConfirmDelete?: () => void;
   onCancelDelete?: (todoId: string) => void;
@@ -30,6 +31,12 @@ export interface TodoItemProps {
   onDragStart?: () => void;
   isActive?: boolean;
   editInputRef: React.RefObject<TextInput>;
+  isEditMode?: boolean;
+  isDeleteMode?: boolean;
+  isSelected?: boolean;
+  onEnterEditMode?: () => void;
+  onEnterDeleteMode?: () => void;
+  showActivityBadge?: boolean;
 }
 
 // 카테고리 컴포넌트 Props 인터페이스

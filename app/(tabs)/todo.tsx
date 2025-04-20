@@ -25,6 +25,7 @@ export default function TodoScreen() {
   const dispatch = useDispatch();
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const addTodoRef = useRef<(() => void) | null>(null);
+  const enterDeleteModeRef = useRef<(() => void) | null>(null);
 
   // 활동 목록 가져오기
   const activities = useSelector((state: RootState) => state.activity.menu);
@@ -39,10 +40,22 @@ export default function TodoScreen() {
     addTodoRef.current = addTodoFn;
   }, []);
 
+  // 삭제 모드 진입 함수 저장
+  const handleSaveEnterDeleteModeFunction = useCallback((enterDeleteModeFn: () => void) => {
+    enterDeleteModeRef.current = enterDeleteModeFn;
+  }, []);
+
   // 할일 추가 실행
   const handleAddTodo = useCallback(() => {
     if (addTodoRef.current) {
       addTodoRef.current();
+    }
+  }, []);
+
+  // 삭제 모드 진입 실행
+  const handleEnterDeleteMode = useCallback(() => {
+    if (enterDeleteModeRef.current) {
+      enterDeleteModeRef.current();
     }
   }, []);
 
@@ -93,12 +106,20 @@ export default function TodoScreen() {
                 </TouchableOpacity>
               </>
             ) : (
-              <TouchableOpacity
-                className="py-2 px-3 rounded-lg flex-row items-center"
-                onPress={handleAddTodo}
-              >
-                <Text className="text-[#007AFF] text-base ml-1">추가</Text>
-              </TouchableOpacity>
+              <>
+                <TouchableOpacity
+                  className="py-2 px-3 rounded-lg flex-row items-center mr-2"
+                  onPress={handleEnterDeleteMode}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#FF3B30" />
+                </TouchableOpacity>
+                <TouchableOpacity
+                  className="py-2 px-3 rounded-lg flex-row items-center"
+                  onPress={handleAddTodo}
+                >
+                  <Text className="text-[#007AFF] text-base ml-1">추가</Text>
+                </TouchableOpacity>
+              </>
             )}
           </View>
         </View>
@@ -109,6 +130,7 @@ export default function TodoScreen() {
             <TodoList 
               activityId={0} 
               onAddTodo={handleSaveAddTodoFunction}
+              onEnterDeleteMode={handleSaveEnterDeleteModeFunction}
               pendingDeleteIds={pendingDeleteIds}
               onConfirmDelete={handleConfirmDelete}
               onCancelDelete={handleStartDelete}

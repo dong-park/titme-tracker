@@ -32,8 +32,10 @@ export interface TodoItemProps {
   activityId: number;
   activity: { id?: number; name: string; emoji: string; color?: string } | null;
   isEditMode?: boolean;
+  isDeleteMode?: boolean;
   isSelected?: boolean;
   onEnterEditMode?: () => void;
+  onEnterDeleteMode?: () => void;
   showActivityBadge?: boolean;
 }
 
@@ -54,8 +56,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
   activityId,
   activity,
   isEditMode = false,
+  isDeleteMode = false,
   isSelected = false,
   onEnterEditMode,
+  onEnterDeleteMode,
   showActivityBadge = false
 }) => {
   const dispatch = useDispatch();
@@ -149,10 +153,28 @@ const TodoItem: React.FC<TodoItemProps> = ({
       <StyledView className="bg-blue-500 justify-center pr-4 pl-6 w-24" />
     );
   };
+  
+  // 슬라이드 왼쪽 영역에 표시할 배경 컴포넌트 (삭제 버튼)
+  const renderLeftActions = () => {
+    return (
+      <StyledTouchableOpacity 
+        className="bg-red-500 justify-center items-center w-20"
+        onPress={onEnterDeleteMode}
+      >
+        <Ionicons name="trash" size={24} color="white" />
+      </StyledTouchableOpacity>
+    );
+  };
 
   const handleSwipeOpen = (direction: 'left' | 'right') => {
     if (direction === 'right' && onEnterEditMode) {
       onEnterEditMode();
+      // 약간의 지연 후 슬라이드 복구
+      setTimeout(() => {
+        swipeableRef.current?.close();
+      }, 100);
+    } else if (direction === 'left' && onEnterDeleteMode) {
+      onEnterDeleteMode();
       // 약간의 지연 후 슬라이드 복구
       setTimeout(() => {
         swipeableRef.current?.close();
@@ -185,12 +207,15 @@ const TodoItem: React.FC<TodoItemProps> = ({
     <>
       <Swipeable
         ref={swipeableRef}
-        // renderRightActions={renderRightActions}
+        renderRightActions={renderRightActions}
+        renderLeftActions={renderLeftActions}
         friction={2}
         rightThreshold={40}
+        leftThreshold={40}
         overshootRight={false}
+        overshootLeft={false}
         onSwipeableOpen={handleSwipeOpen}
-        enabled={!isEditMode && !isEditing && !isPendingDelete}
+        enabled={!isEditMode && !isDeleteMode && !isEditing && !isPendingDelete}
       >
         <StyledView className="relative">
           <StyledView
@@ -202,10 +227,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
           >
             <StyledTouchableOpacity
               className="mr-3 w-6 h-6 justify-center items-center"
-              onPress={isEditMode ? () => onToggle(todo.id) : handleToggle}
+              onPress={isEditMode || isDeleteMode ? () => onToggle(todo.id) : handleToggle}
               disabled={isEditing}
             >
-              {isEditMode ? (
+              {isEditMode || isDeleteMode ? (
                 <Ionicons
                   name={isSelected ? 'radio-button-on' : 'radio-button-off'}
                   size={24}
