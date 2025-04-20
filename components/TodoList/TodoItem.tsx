@@ -10,13 +10,16 @@ import { useDispatch, useSelector } from 'react-redux';
 import { StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
 import { Swipeable } from 'react-native-gesture-handler';
 
+// 확장된 TodoItem 타입 정의
+export type ExtendedTodoItem = TodoItemType & {
+  activityId?: number;
+  activityName?: string;
+  activityEmoji?: string;
+  activityColor?: string;
+};
+
 export interface TodoItemProps {
-  todo: TodoItemType & {
-    activityId?: number;
-    activityName?: string;
-    activityEmoji?: string;
-    activityColor?: string;
-  };
+  todo: ExtendedTodoItem;
   onToggle: (todoId: string) => void;
   onDelete: (todoId: string) => void;
   onDragStart?: () => void;

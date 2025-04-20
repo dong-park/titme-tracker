@@ -16,7 +16,7 @@ import DraggableFlatList from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useDispatch, useSelector } from 'react-redux';
 import { StyledScrollView, StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
-import TodoItem from './TodoItem';
+import TodoItem, { ExtendedTodoItem } from './TodoItem';
 import { TodoListProps } from './types';
 import { v4 as uuidv4 } from 'uuid';
 import { MenuActivity } from '@/store/activitySlice';
@@ -39,7 +39,7 @@ const selectTodosByActivityId = createSelector(
 const selectAllTodos = createSelector(
   [(state: RootState) => state.todos.todosByActivity, (_, activities: MenuActivity[]) => activities],
   (todosByActivity, activities) => {
-    let allTodos: TodoItemType[] = [];
+    let allTodos: ExtendedTodoItem[] = [];
     
     activities.forEach(activity => {
       const activityTodos = todosByActivity[activity.id] || [];
@@ -80,7 +80,7 @@ export function TodoList({
   const activity = useSelector((state: RootState) => 
     state.activity.menu.find(item => item.id === activityId)
   );
-  const [localTodos, setLocalTodos] = useState<TodoItemType[]>([]);
+  const [localTodos, setLocalTodos] = useState<ExtendedTodoItem[]>([]);
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [isEditMode, setIsEditMode] = useState(false);
@@ -119,23 +119,30 @@ export function TodoList({
   // 할일 추가 시작
   const handleStartAddTodo = () => {
     const newTodoId = uuidv4();
-    const newTodo: TodoItemType = {
-      id: newTodoId,
-      text: '',
-      completed: false,
-      date: new Date().toISOString(),
-    };
     
-    // 선택된 activityId 또는 첫 번째 활동 ID 사용
+    // 선택된 activityId 또는 현재 활동 사용 (전체 보기 모드일 경우)
     const targetActivityId = showAllActivities && activitiesWithTodo.length > 0
       ? activitiesWithTodo[0].id
       : activityId;
     
-    // Redux 상태 업데이트
+    const newTodo: ExtendedTodoItem = {
+      id: newTodoId,
+      text: '',
+      completed: false,
+      date: new Date().toISOString(),
+      categoryId: 1, // 기본 카테고리
+      activityId: targetActivityId,
+      activityEmoji: activity?.emoji || '',
+      activityName: activity?.name || '',
+      activityColor: activity?.color || ''
+    };
+    
+    // Redux 상태 업데이트 (텍스트는 빈값으로 시작)
     dispatch(addTodo({
       activityId: targetActivityId,
       text: '',
-      id: newTodoId
+      id: newTodoId,
+      categoryId: 1
     }));
     
     // 로컬 상태에 빈 할일 추가 (최상단에)
@@ -162,7 +169,7 @@ export function TodoList({
   const handleToggleTodo = (todoId: string) => {
     // 활동 ID 찾기 (전체 표시 모드에서는 todo 객체에서 activityId 가져옴)
     const targetActivityId = showAllActivities
-      ? localTodos.find(todo => todo.id === todoId)?.activityId || activityId
+      ? (localTodos.find(todo => todo.id === todoId) as ExtendedTodoItem)?.activityId || activityId
       : activityId;
       
     dispatch(toggleTodo({
@@ -181,7 +188,7 @@ export function TodoList({
   };
 
   // 할일 순서 변경
-  const handleReorderTodos = ({ data }: { data: TodoItemType[] }) => {
+  const handleReorderTodos = ({ data }: { data: ExtendedTodoItem[] }) => {
     // 전체 활동 모드에서는 reorder 작동 안함 (각 활동별로 순서가 유지되어야 함)
     if (showAllActivities) {
       setLocalTodos(todos);
@@ -207,7 +214,7 @@ export function TodoList({
   };
   
   // 할일 편집 시작
-  const handleStartEdit = (todo: TodoItemType) => {
+  const handleStartEdit = (todo: ExtendedTodoItem) => {
     setEditingTodoId(todo.id);
     setEditingText(todo.text);
     setTimeout(() => {
@@ -223,16 +230,13 @@ export function TodoList({
     const editingTodo = localTodos.find(todo => todo.id === editingTodoId);
     if (!editingTodo) return;
     
-    // 활동 ID 가져오기
-    const targetActivityId = showAllActivities 
-      ? editingTodo.activityId || activityId
+    // 활동 ID 가져오기 - showAllActivities일 경우 해당 할일이 속한 활동의 ID 찾기
+    const targetActivityId = showAllActivities && activitiesWithTodo.length > 0
+      ? (todos.find(t => t.id === editingTodoId) as ExtendedTodoItem)?.activityId || activityId
       : activityId;
     
-    // 새로 추가된 할일인 경우 (빈 텍스트 허용)
-    const isNewTodo = editingTodo.text === '';
-    
-    if (!isNewTodo && editingText.trim() === '') {
-      // 빈 텍스트인 경우 할일 삭제
+    // 편집 중에 텍스트가 비어있으면 할일 삭제
+    if (editingText.trim() === '') {
       dispatch(deleteTodo({
         activityId: targetActivityId,
         todoId: editingTodoId
@@ -242,6 +246,7 @@ export function TodoList({
       return;
     }
 
+    // 텍스트가 비어있지 않으면 할일 업데이트
     dispatch(updateTodo({
       activityId: targetActivityId,
       todoId: editingTodoId,

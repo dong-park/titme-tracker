@@ -27,8 +27,8 @@ export const todoSlice = createSlice({
   name: 'todos',
   initialState,
   reducers: {
-    addTodo: (state, action: PayloadAction<{ activityId: number; text: string; id?: string }>) => {
-      const { activityId, text, id } = action.payload;
+    addTodo: (state, action: PayloadAction<{ activityId: number; text: string; id?: string; categoryId?: number }>) => {
+      const { activityId, text, id, categoryId } = action.payload;
       
       if (!state.todosByActivity[activityId]) {
         state.todosByActivity[activityId] = [];
@@ -39,7 +39,8 @@ export const todoSlice = createSlice({
         text,
         completed: false,
         date: new Date().toISOString(),
-        isTracking: false
+        isTracking: false,
+        categoryId: categoryId || 1 // 카테고리 ID 기본값 1로 설정
       });
     },
     
