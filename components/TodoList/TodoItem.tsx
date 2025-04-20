@@ -316,8 +316,8 @@ const TodoItem: React.FC<TodoItemProps> = ({
         animationType="slide"
         onRequestClose={() => setIsActivitySelectorVisible(false)}
       >
-        <StyledView className="flex-1 justify-end bg-black bg-opacity-50">
-          <StyledView className="bg-white rounded-t-xl p-4 max-h-[60%]">
+        <StyledView className="flex-1 justify-end">
+          <StyledView className="bg-white rounded-t-xl p-4 max-h-[60%] shadow-lg">
             <StyledView className="flex-row justify-between items-center mb-4">
               <StyledText className="text-lg font-bold">활동 선택</StyledText>
               <StyledTouchableOpacity onPress={() => setIsActivitySelectorVisible(false)}>
