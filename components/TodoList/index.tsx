@@ -19,6 +19,7 @@ import { StyledScrollView, StyledText, StyledTextInput, StyledTouchableOpacity, 
 import TodoItem from './TodoItem';
 import { TodoListProps } from './types';
 import { v4 as uuidv4 } from 'uuid';
+import { MenuActivity } from '@/store/activitySlice';
 
 // LayoutAnimation 설정 (안드로이드 대응)
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -34,9 +35,48 @@ const selectTodosByActivityId = createSelector(
   (todosByActivity, activityId) => todosByActivity[activityId] || []
 );
 
-export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDelete, onCancelDelete }: TodoListProps) {
+// 모든 활동의 할일을 선택하는 셀렉터
+const selectAllTodos = createSelector(
+  [(state: RootState) => state.todos.todosByActivity, (_, activities: MenuActivity[]) => activities],
+  (todosByActivity, activities) => {
+    let allTodos: TodoItemType[] = [];
+    
+    activities.forEach(activity => {
+      const activityTodos = todosByActivity[activity.id] || [];
+      // 할일에 활동 정보 추가
+      const todosWithActivity = activityTodos.map(todo => ({
+        ...todo,
+        activityId: activity.id,
+        activityEmoji: activity.emoji,
+        activityName: activity.name,
+        activityColor: activity.color
+      }));
+      allTodos = [...allTodos, ...todosWithActivity];
+    });
+    
+    // 날짜 기준 정렬 (최신순)
+    return allTodos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }
+);
+
+export function TodoList({ 
+  activityId, 
+  onAddTodo, 
+  pendingDeleteIds, 
+  onConfirmDelete, 
+  onCancelDelete,
+  showAllActivities = false,
+  activitiesWithTodo = []
+}: TodoListProps) {
   const dispatch = useDispatch();
-  const todos = useSelector((state: RootState) => selectTodosByActivityId(state, activityId));
+  
+  // 할일 데이터 가져오기 (단일 활동 또는 모든 활동)
+  const todos = useSelector((state: RootState) => 
+    showAllActivities 
+      ? selectAllTodos(state, activitiesWithTodo)
+      : selectTodosByActivityId(state, activityId)
+  );
+  
   const activity = useSelector((state: RootState) => 
     state.activity.menu.find(item => item.id === activityId)
   );
@@ -86,9 +126,14 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
       date: new Date().toISOString(),
     };
     
+    // 선택된 activityId 또는 첫 번째 활동 ID 사용
+    const targetActivityId = showAllActivities && activitiesWithTodo.length > 0
+      ? activitiesWithTodo[0].id
+      : activityId;
+    
     // Redux 상태 업데이트
     dispatch(addTodo({
-      activityId,
+      activityId: targetActivityId,
       text: '',
       id: newTodoId
     }));
@@ -115,8 +160,13 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
   
   // 할일 완료/미완료 토글
   const handleToggleTodo = (todoId: string) => {
+    // 활동 ID 찾기 (전체 표시 모드에서는 todo 객체에서 activityId 가져옴)
+    const targetActivityId = showAllActivities
+      ? localTodos.find(todo => todo.id === todoId)?.activityId || activityId
+      : activityId;
+      
     dispatch(toggleTodo({
-      activityId,
+      activityId: targetActivityId,
       todoId
     }));
   };
@@ -132,6 +182,12 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
 
   // 할일 순서 변경
   const handleReorderTodos = ({ data }: { data: TodoItemType[] }) => {
+    // 전체 활동 모드에서는 reorder 작동 안함 (각 활동별로 순서가 유지되어야 함)
+    if (showAllActivities) {
+      setLocalTodos(todos);
+      return;
+    }
+    
     // 드래그 앤 드롭 유효성 검사
     const isValidMove = true; // 여기에 필요한 검증 로직 추가
     
@@ -163,13 +219,22 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
   const handleFinishEdit = () => {
     if (!editingTodoId) return;
     
+    // 현재 편집 중인 할일 찾기
+    const editingTodo = localTodos.find(todo => todo.id === editingTodoId);
+    if (!editingTodo) return;
+    
+    // 활동 ID 가져오기
+    const targetActivityId = showAllActivities 
+      ? editingTodo.activityId || activityId
+      : activityId;
+    
     // 새로 추가된 할일인 경우 (빈 텍스트 허용)
-    const isNewTodo = localTodos.find(todo => todo.id === editingTodoId)?.text === '';
+    const isNewTodo = editingTodo.text === '';
     
     if (!isNewTodo && editingText.trim() === '') {
       // 빈 텍스트인 경우 할일 삭제
       dispatch(deleteTodo({
-        activityId,
+        activityId: targetActivityId,
         todoId: editingTodoId
       }));
       setEditingTodoId(null);
@@ -178,7 +243,7 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
     }
 
     dispatch(updateTodo({
-      activityId,
+      activityId: targetActivityId,
       todoId: editingTodoId,
       text: editingText.trim()
     }));
@@ -191,10 +256,19 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
   const handleCancelEdit = () => {
     if (!editingTodoId) return;
     
+    // 현재 편집 중인 할일 찾기
+    const editingTodo = localTodos.find(todo => todo.id === editingTodoId);
+    if (!editingTodo) return;
+    
+    // 활동 ID 가져오기
+    const targetActivityId = showAllActivities 
+      ? editingTodo.activityId || activityId
+      : activityId;
+    
     // 빈 텍스트인 경우 할일 삭제
     if (editingText.trim() === '') {
       dispatch(deleteTodo({
-        activityId,
+        activityId: targetActivityId,
         todoId: editingTodoId
       }));
     }
@@ -247,8 +321,14 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
           onPress: () => {
             // 선택된 모든 할일 삭제
             selectedTodoIds.forEach(todoId => {
+              // 할일에 해당하는 활동 ID 찾기
+              const targetTodo = localTodos.find(todo => todo.id === todoId);
+              const targetActivityId = showAllActivities && targetTodo 
+                ? targetTodo.activityId || activityId
+                : activityId;
+                
               dispatch(deleteTodo({
-                activityId,
+                activityId: targetActivityId,
                 todoId
               }));
             });
@@ -300,11 +380,16 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
         renderItem={({ item, drag, isActive }) => (
           <TodoItem
             todo={item}
-            activityId={activityId}
-            activity={activity || null}
+            activityId={showAllActivities ? item.activityId || activityId : activityId}
+            activity={showAllActivities ? {
+              id: item.activityId || 0,
+              name: item.activityName || '',
+              emoji: item.activityEmoji || '',
+              color: item.activityColor
+            } : (activity || null)}
             onToggle={isEditMode ? handleSelectTodo : handleToggleTodo}
             onDelete={handleStartDelete}
-            onDragStart={drag}
+            onDragStart={showAllActivities ? undefined : drag}
             isActive={isActive}
             isEditing={editingTodoId === item.id}
             isPendingDelete={pendingDeleteIds?.includes(item.id) || false}
@@ -317,6 +402,7 @@ export function TodoList({ activityId, onAddTodo, pendingDeleteIds, onConfirmDel
             isEditMode={isEditMode}
             isSelected={selectedTodoIds.includes(item.id)}
             onEnterEditMode={handleEnterEditMode}
+            showActivityBadge={showAllActivities}
           />
         )}
         ListEmptyComponent={

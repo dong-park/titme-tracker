@@ -23,7 +23,6 @@ const StyledSafeAreaView = styled(SafeAreaView);
 export default function TodoScreen() {
   const colorScheme = useColorScheme();
   const dispatch = useDispatch();
-  const [selectedActivityId, setSelectedActivityId] = useState<number | null>(null);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<string[]>([]);
   const addTodoRef = useRef<(() => void) | null>(null);
 
@@ -34,16 +33,6 @@ export default function TodoScreen() {
   const activitiesWithTodo = activities.filter((activity: MenuActivity) =>
     activity.todoListEnabled
   );
-
-  // 첫 렌더링 시 첫 번째 활동 선택
-  useEffect(() => {
-    if (activitiesWithTodo.length > 0 && !selectedActivityId) {
-      setSelectedActivityId(activitiesWithTodo[0].id);
-    }
-  }, [activitiesWithTodo, selectedActivityId]);
-
-  // 선택된 활동 정보
-  const selectedActivity = activities.find((activity: MenuActivity) => activity.id === selectedActivityId);
 
   // 할일 추가 함수 저장
   const handleSaveAddTodoFunction = useCallback((addTodoFn: () => void) => {
@@ -64,35 +53,22 @@ export default function TodoScreen() {
 
   // 할일 삭제 확인
   const handleConfirmDelete = useCallback(() => {
-    if (!selectedActivityId) return;
-    
     pendingDeleteIds.forEach(todoId => {
-      dispatch(deleteTodo({
-        activityId: selectedActivityId,
-        todoId
-      }));
+      // 모든 활동 순회
+      activitiesWithTodo.forEach(activity => {
+        dispatch(deleteTodo({
+          activityId: activity.id,
+          todoId
+        }));
+      });
     });
     setPendingDeleteIds([]);
-  }, [dispatch, pendingDeleteIds, selectedActivityId]);
+  }, [dispatch, pendingDeleteIds, activitiesWithTodo]);
 
   // 할일 삭제 취소
   const handleCancelDelete = useCallback(() => {
     setPendingDeleteIds([]);
   }, []);
-
-  const ActivityItem = ({ activity, isSelected }: { activity: MenuActivity, isSelected: boolean }) => (
-    <StyledTouchableOpacity
-      className={`bg-white px-3 py-1.5 rounded-full mr-2 border ${isSelected
-        ? `bg-[${Colors[colorScheme ?? 'light'].tint}] border-[${Colors[colorScheme ?? 'light'].tint}]`
-        : 'border-gray-300'
-        }`}
-      onPress={() => setSelectedActivityId(activity.id)}
-    >
-      <StyledText className={`text-xs font-medium `}>
-        {activity.emoji} {activity.name}
-      </StyledText>
-    </StyledTouchableOpacity>
-  );
 
   return (
     <StyledSafeAreaView className="flex-1 bg-slate-100">
@@ -128,33 +104,18 @@ export default function TodoScreen() {
         </View>
 
         <>
-          {/* 활동 선택 영역 */}
-          <StyledScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="py-2"
-          >
-            {activitiesWithTodo.map(activity => (
-              <ActivityItem
-                key={activity.id}
-                activity={activity}
-                isSelected={activity.id === selectedActivityId}
-              />
-            ))}
-          </StyledScrollView>
-
-          {/* 선택된 활동의 할일 목록 */}
-          {selectedActivity && selectedActivityId && (
-            <StyledView className="h-[75vh] py-2">
-              <TodoList 
-                activityId={selectedActivityId} 
-                onAddTodo={handleSaveAddTodoFunction}
-                pendingDeleteIds={pendingDeleteIds}
-                onConfirmDelete={handleConfirmDelete}
-                onCancelDelete={handleStartDelete}
-              />
-            </StyledView>
-          )}
+          {/* 전체 할일 목록 */}
+          <StyledView className="h-[75vh] py-2">
+            <TodoList 
+              activityId={0} 
+              onAddTodo={handleSaveAddTodoFunction}
+              pendingDeleteIds={pendingDeleteIds}
+              onConfirmDelete={handleConfirmDelete}
+              onCancelDelete={handleStartDelete}
+              showAllActivities={true}
+              activitiesWithTodo={activitiesWithTodo}
+            />
+          </StyledView>
         </>
       </StyledView>
     </StyledSafeAreaView>

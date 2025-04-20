@@ -9,6 +9,8 @@ export interface TodoListProps {
   pendingDeleteIds?: string[];
   onConfirmDelete?: () => void;
   onCancelDelete?: (todoId: string) => void;
+  showAllActivities?: boolean;
+  activitiesWithTodo?: MenuActivity[];
 }
 
 // TodoItem 컴포넌트 Props 인터페이스

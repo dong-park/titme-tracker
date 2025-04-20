@@ -11,10 +11,15 @@ import { StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from 
 import { Swipeable } from 'react-native-gesture-handler';
 
 export interface TodoItemProps {
-  todo: TodoItemType;
+  todo: TodoItemType & {
+    activityId?: number;
+    activityName?: string;
+    activityEmoji?: string;
+    activityColor?: string;
+  };
   onToggle: (todoId: string) => void;
   onDelete: (todoId: string) => void;
-  onDragStart: () => void;
+  onDragStart?: () => void;
   isActive: boolean;
   isEditing: boolean;
   isPendingDelete: boolean;
@@ -25,10 +30,11 @@ export interface TodoItemProps {
   onEditTextChange: (text: string) => void;
   editInputRef: RefObject<TextInput>;
   activityId: number;
-  activity: { name: string; emoji: string } | null;
+  activity: { id?: number; name: string; emoji: string; color?: string } | null;
   isEditMode?: boolean;
   isSelected?: boolean;
   onEnterEditMode?: () => void;
+  showActivityBadge?: boolean;
 }
 
 const TodoItem: React.FC<TodoItemProps> = ({
@@ -49,7 +55,8 @@ const TodoItem: React.FC<TodoItemProps> = ({
   activity,
   isEditMode = false,
   isSelected = false,
-  onEnterEditMode
+  onEnterEditMode,
+  showActivityBadge = false
 }) => {
   const dispatch = useDispatch();
   const isTracking = useSelector((state: RootState) => state.activity.isTracking);
@@ -215,6 +222,15 @@ const TodoItem: React.FC<TodoItemProps> = ({
                 >
                   {todo.text}
                 </StyledText>
+                
+                {showActivityBadge && todo.activityEmoji && (
+                  <StyledView className="mt-1 flex-row items-center">
+                    <StyledText className="text-xs text-gray-500 mr-1">
+                      {todo.activityEmoji} {todo.activityName}
+                    </StyledText>
+                  </StyledView>
+                )}
+                
                 {!isEditing && !isEditMode && (
                   <StyledTouchableOpacity
                     className="absolute top-0 left-0 right-0 bottom-0"
