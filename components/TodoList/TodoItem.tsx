@@ -191,16 +191,29 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const handleSelectActivity = (selectedActivityId: number) => {
     setSelectedActivityId(selectedActivityId);
     
+    // 선택된 활동 정보 가져오기
+    const selectedActivity = activities.find(a => a.id === selectedActivityId);
+    
     // 할일의 활동을 변경하는 액션 디스패치
-    if (todo.id) {
+    if (todo.id && selectedActivity) {
       dispatch(updateTodoActivity({
         todoId: todo.id,
         sourceActivityId: todo.activityId || activityId,
-        targetActivityId: selectedActivityId
+        targetActivityId: selectedActivityId,
+        activityName: selectedActivity.name,
+        activityEmoji: selectedActivity.emoji,
+        activityColor: selectedActivity.color
       }));
     }
     
     setIsActivitySelectorVisible(false);
+    
+    // 편집 중인 경우 포커스 복원
+    if (isEditing && editInputRef.current) {
+      setTimeout(() => {
+        editInputRef.current?.focus();
+      }, 100);
+    }
   };
 
   return (

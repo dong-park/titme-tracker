@@ -11,6 +11,11 @@ export interface TodoItem {
   startDate?: string;  // ISO 형식, 선택적
   endDate?: string;    // ISO 형식, 선택적
   categoryId?: number; // 카테고리 ID, 선택적
+  activityId?: number; // 활동 ID, 선택적
+  activityName?: string; // 활동 이름, 선택적
+  activityEmoji?: string; // 활동 이모지, 선택적
+  activityColor?: string; // 활동 색상, 선택적
+  _debounceTimer?: any; // 디바운스 타이머용 (UI에만 사용, 저장되지 않음)
 }
 
 interface TodoState {
@@ -27,8 +32,15 @@ export const todoSlice = createSlice({
   name: 'todos',
   initialState,
   reducers: {
-    addTodo: (state, action: PayloadAction<{ activityId: number; text: string; id?: string }>) => {
-      const { activityId, text, id } = action.payload;
+    addTodo: (state, action: PayloadAction<{ 
+      activityId: number; 
+      text: string; 
+      id?: string; 
+      activityEmoji?: string;
+      activityName?: string;
+      activityColor?: string;
+    }>) => {
+      const { activityId, text, id, activityEmoji, activityName, activityColor } = action.payload;
       
       if (!state.todosByActivity[activityId]) {
         state.todosByActivity[activityId] = [];
@@ -39,7 +51,11 @@ export const todoSlice = createSlice({
         text,
         completed: false,
         date: new Date().toISOString(),
-        isTracking: false
+        isTracking: false,
+        activityId,
+        activityEmoji,
+        activityName,
+        activityColor
       });
     },
     
@@ -92,8 +108,15 @@ export const todoSlice = createSlice({
       }
     },
     
-    updateTodoActivity: (state, action: PayloadAction<{ todoId: string; sourceActivityId: number; targetActivityId: number }>) => {
-      const { todoId, sourceActivityId, targetActivityId } = action.payload;
+    updateTodoActivity: (state, action: PayloadAction<{ 
+      todoId: string; 
+      sourceActivityId: number; 
+      targetActivityId: number;
+      activityName?: string;
+      activityEmoji?: string;
+      activityColor?: string;
+    }>) => {
+      const { todoId, sourceActivityId, targetActivityId, activityName, activityEmoji, activityColor } = action.payload;
       
       // 소스 활동에서 할일 찾기
       const sourceTodos = state.todosByActivity[sourceActivityId];
@@ -104,6 +127,12 @@ export const todoSlice = createSlice({
       
       // 할일 객체 복사
       const todoToMove = { ...sourceTodos[todoIndex] };
+      
+      // 활동 정보 업데이트
+      todoToMove.activityId = targetActivityId;
+      if (activityName) todoToMove.activityName = activityName;
+      if (activityEmoji) todoToMove.activityEmoji = activityEmoji;
+      if (activityColor) todoToMove.activityColor = activityColor;
       
       // 소스 활동에서 할일 제거
       state.todosByActivity[sourceActivityId] = sourceTodos.filter(todo => todo.id !== todoId);

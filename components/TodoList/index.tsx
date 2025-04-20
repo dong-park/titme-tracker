@@ -46,10 +46,10 @@ const selectAllTodos = createSelector(
       // 할일에 활동 정보 추가
       const todosWithActivity = activityTodos.map(todo => ({
         ...todo,
-        activityId: activity.id,
-        activityEmoji: activity.emoji,
-        activityName: activity.name,
-        activityColor: activity.color
+        activityId: todo.activityId || activity.id,
+        activityEmoji: todo.activityEmoji || activity.emoji,
+        activityName: todo.activityName || activity.name,
+        activityColor: todo.activityColor || activity.color
       }));
       allTodos = [...allTodos, ...todosWithActivity];
     });
@@ -89,6 +89,34 @@ export function TodoList({
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const editInputRef = useRef<TextInput>(null);
   
+  // 텍스트 변경 핸들러
+  const handleEditTextChange = (text: string) => {
+    setEditingText(text);
+    
+    // 실시간으로 Redux 상태 업데이트 (편집 중인 할일이 있는 경우)
+    if (editingTodoId) {
+      const editingTodo = localTodos.find(todo => todo.id === editingTodoId);
+      if (editingTodo) {
+        const targetActivityId = showAllActivities 
+          ? editingTodo.activityId || activityId
+          : activityId;
+        
+        // 0.5초 이내에 여러 번 호출되지 않도록 디바운스 처리
+        if (editingTodo._debounceTimer) {
+          clearTimeout(editingTodo._debounceTimer);
+        }
+        
+        editingTodo._debounceTimer = setTimeout(() => {
+          dispatch(updateTodo({
+            activityId: targetActivityId,
+            todoId: editingTodoId,
+            text: text
+          }));
+        }, 300);
+      }
+    }
+  };
+  
   // todos가 변경될 때 localTodos 업데이트 (editingTodoId가 null일 때만)
   useEffect(() => {
     if (editingTodoId === null) {
@@ -119,25 +147,41 @@ export function TodoList({
   }, [pendingDeleteIds, editingTodoId]);
   
   // 할일 추가 시작
-  const handleStartAddTodo = () => {
+  const handleStartAddTodo = (selectedActivityId?: number) => {
     const newTodoId = uuidv4();
+    
+    // 선택된 activityId 사용 (파라미터로 받은 경우 우선 사용)
+    const targetActivityId = selectedActivityId || activityId;
+    
+    // 선택된 활동 정보 가져오기
+    const targetActivity = selectedActivityId 
+      ? activitiesWithTodo.find(a => a.id === selectedActivityId) 
+      : activity;
+    
+    // 활동 정보가 없는 경우 추가하지 않음
+    if (!targetActivity) {
+      return;
+    }
+    
     const newTodo: TodoItemType = {
       id: newTodoId,
       text: '',
       completed: false,
       date: new Date().toISOString(),
+      activityId: targetActivityId,
+      activityName: targetActivity.name,
+      activityEmoji: targetActivity.emoji,
+      activityColor: targetActivity.color
     };
-    
-    // 선택된 activityId 또는 첫 번째 활동 ID 사용
-    const targetActivityId = showAllActivities && activitiesWithTodo.length > 0
-      ? activitiesWithTodo[0].id
-      : activityId;
     
     // Redux 상태 업데이트
     dispatch(addTodo({
       activityId: targetActivityId,
       text: '',
-      id: newTodoId
+      id: newTodoId,
+      activityName: targetActivity.name,
+      activityEmoji: targetActivity.emoji,
+      activityColor: targetActivity.color
     }));
     
     // 로컬 상태에 빈 할일 추가 (최상단에)
@@ -245,18 +289,17 @@ export function TodoList({
       ? editingTodo.activityId || activityId
       : activityId;
     
-    // 새로 추가된 할일인 경우 (빈 텍스트 허용)
-    const isNewTodo = editingTodo.text === '';
-    
     // 빈 텍스트여도 할일 유지 (삭제하지 않음)
     const textToSave = editingText.trim() === '' ? ' ' : editingText.trim();
     
+    // Redux 상태 업데이트
     dispatch(updateTodo({
       activityId: targetActivityId,
       todoId: editingTodoId,
       text: textToSave
     }));
 
+    // 편집 모드 종료
     setEditingTodoId(null);
     setEditingText('');
   };
@@ -339,14 +382,15 @@ export function TodoList({
             selectedTodoIds.forEach(todoId => {
               // 할일에 해당하는 활동 ID 찾기
               const targetTodo = localTodos.find(todo => todo.id === todoId);
-              const targetActivityId = showAllActivities && targetTodo 
-                ? targetTodo.activityId || activityId
-                : activityId;
+              
+              if (targetTodo) {
+                const targetActivityId = targetTodo.activityId || activityId;
                 
-              dispatch(deleteTodo({
-                activityId: targetActivityId,
-                todoId
-              }));
+                dispatch(deleteTodo({
+                  activityId: targetActivityId,
+                  todoId
+                }));
+              }
             });
             
             // 편집 모드 종료 및 선택 초기화
@@ -444,7 +488,7 @@ export function TodoList({
             onStartEdit={() => handleStartEdit(item)}
             onFinishEdit={handleFinishEdit}
             onCancelEdit={handleCancelEdit}
-            onEditTextChange={setEditingText}
+            onEditTextChange={handleEditTextChange}
             editInputRef={editInputRef}
             isEditMode={isEditMode}
             isDeleteMode={isDeleteMode}
