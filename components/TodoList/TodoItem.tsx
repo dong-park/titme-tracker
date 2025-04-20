@@ -1,10 +1,10 @@
-import React, { RefObject, useCallback, useRef } from 'react';
-import { TextInput } from 'react-native';
+import React, { RefObject, useCallback, useRef, useState } from 'react';
+import { TextInput, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TodoItem as TodoItemType } from '@/store/todoSlice';
 import { styled } from 'nativewind';
 import { startTracking, stopTracking } from '@/store/activitySlice';
-import { startTrackingTodo, stopTrackingTodo } from '@/store/todoSlice';
+import { startTrackingTodo, stopTrackingTodo, updateTodoActivity } from '@/store/todoSlice';
 import { RootState } from '@/store/store';
 import { useDispatch, useSelector } from 'react-redux';
 import { StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
@@ -60,6 +60,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
 }) => {
   const dispatch = useDispatch();
   const isTracking = useSelector((state: RootState) => state.activity.isTracking);
+  const activities = useSelector((state: RootState) => state.activity.menu);
+  const [isActivitySelectorVisible, setIsActivitySelectorVisible] = useState(false);
+  const [selectedActivityId, setSelectedActivityId] = useState(todo.activityId || activityId);
+  
   const currentTrackingTodo = useSelector((state: RootState) => {
     // 현재 트래킹 중인 할일 찾기
     const todosByActivity = state.todos.todosByActivity;
@@ -156,119 +160,193 @@ const TodoItem: React.FC<TodoItemProps> = ({
     }
   };
 
-  return (
-    <Swipeable
-      ref={swipeableRef}
-      // renderRightActions={renderRightActions}
-      friction={2}
-      rightThreshold={40}
-      overshootRight={false}
-      onSwipeableOpen={handleSwipeOpen}
-      enabled={!isEditMode && !isEditing && !isPendingDelete}
-    >
-      <StyledView className="relative">
-        <StyledView
-          className={`flex-row items-center py-3 px-3 bg-white rounded-lg mb-2 min-h-[58px]
-            ${isActive ? 'bg-blue-50 shadow-md' : ''} 
-            ${isPendingDelete ? 'bg-red-50' : ''} 
-            ${todo.isTracking ? 'border-2 border-blue-500' : ''}
-            ${isSelected ? 'bg-blue-100' : ''}`}
-        >
-          <StyledTouchableOpacity
-            className="mr-3 w-6 h-6 justify-center items-center"
-            onPress={isEditMode ? () => onToggle(todo.id) : handleToggle}
-            disabled={isEditing}
-          >
-            {isEditMode ? (
-              <Ionicons
-                name={isSelected ? 'radio-button-on' : 'radio-button-off'}
-                size={24}
-                color={isSelected ? '#3B82F6' : '#9CA3AF'}
-              />
-            ) : (
-              <Ionicons
-                name={todo.completed ? 'checkmark-circle' : 'ellipse-outline'}
-                size={24}
-                color={todo.completed ? '#4CAF50' : '#9CA3AF'}
-              />
-            )}
-          </StyledTouchableOpacity>
+  // 활동 선택기 열기
+  const openActivitySelector = () => {
+    setIsActivitySelectorVisible(true);
+  };
 
-          {isEditing ? (
-            <StyledView className="flex-1 flex-row items-center">
-              <StyledTextInput
-                ref={editInputRef}
-                className="flex-1 text-base py-0 px-0 min-h-[24px]"
-                value={editingText}
-                onChangeText={onEditTextChange}
-                onSubmitEditing={onFinishEdit}
-                onBlur={onFinishEdit}
-                autoFocus
-                placeholder="할일을 입력하세요"
-                placeholderTextColor="#9CA3AF"
-              />
-              <StyledTouchableOpacity
-                className="ml-2 w-8 h-8 justify-center items-center"
-                onPress={onCancelEdit}
-              >
-                <Ionicons name="close-circle" size={24} color="#9CA3AF" />
+  // 활동 선택 처리
+  const handleSelectActivity = (selectedActivityId: number) => {
+    setSelectedActivityId(selectedActivityId);
+    
+    // 할일의 활동을 변경하는 액션 디스패치
+    if (todo.id) {
+      dispatch(updateTodoActivity({
+        todoId: todo.id,
+        sourceActivityId: todo.activityId || activityId,
+        targetActivityId: selectedActivityId
+      }));
+    }
+    
+    setIsActivitySelectorVisible(false);
+  };
+
+  return (
+    <>
+      <Swipeable
+        ref={swipeableRef}
+        // renderRightActions={renderRightActions}
+        friction={2}
+        rightThreshold={40}
+        overshootRight={false}
+        onSwipeableOpen={handleSwipeOpen}
+        enabled={!isEditMode && !isEditing && !isPendingDelete}
+      >
+        <StyledView className="relative">
+          <StyledView
+            className={`flex-row items-center py-3 px-3 bg-white rounded-lg mb-2 min-h-[58px]
+              ${isActive ? 'bg-blue-50 shadow-md' : ''} 
+              ${isPendingDelete ? 'bg-red-50' : ''} 
+              ${todo.isTracking ? 'border-2 border-blue-500' : ''}
+              ${isSelected ? 'bg-blue-100' : ''}`}
+          >
+            <StyledTouchableOpacity
+              className="mr-3 w-6 h-6 justify-center items-center"
+              onPress={isEditMode ? () => onToggle(todo.id) : handleToggle}
+              disabled={isEditing}
+            >
+              {isEditMode ? (
+                <Ionicons
+                  name={isSelected ? 'radio-button-on' : 'radio-button-off'}
+                  size={24}
+                  color={isSelected ? '#3B82F6' : '#9CA3AF'}
+                />
+              ) : (
+                <Ionicons
+                  name={todo.completed ? 'checkmark-circle' : 'ellipse-outline'}
+                  size={24}
+                  color={todo.completed ? '#4CAF50' : '#9CA3AF'}
+                />
+              )}
+            </StyledTouchableOpacity>
+
+            {isEditing ? (
+              <StyledView className="flex-1">
+                <StyledView className="flex-row items-center mb-2">
+                  <StyledTextInput
+                    ref={editInputRef}
+                    className="flex-1 text-base py-0 px-0 min-h-[24px]"
+                    value={editingText}
+                    onChangeText={onEditTextChange}
+                    onSubmitEditing={onFinishEdit}
+                    autoFocus
+                    onBlur={onFinishEdit}
+                    placeholder="할일을 입력하세요"
+                    placeholderTextColor="#9CA3AF"
+                  />
+                  <StyledTouchableOpacity
+                    className="ml-2 w-8 h-8 justify-center items-center"
+                    onPress={onCancelEdit}
+                  >
+                    <Ionicons name="close-circle" size={24} color="#9CA3AF" />
+                  </StyledTouchableOpacity>
+                </StyledView>
+                
+                <StyledTouchableOpacity 
+                  className="flex-row items-center py-1 px-2 bg-gray-100 rounded-md self-start"
+                  onPress={openActivitySelector}
+                >
+                  <StyledText className="text-xs text-gray-700 mr-1">
+                    {activities.find(a => a.id === selectedActivityId)?.emoji || ''} 
+                    {activities.find(a => a.id === selectedActivityId)?.name || '활동 선택'}
+                  </StyledText>
+                  <Ionicons name="chevron-down" size={12} color="#4B5563" />
+                </StyledTouchableOpacity>
+              </StyledView>
+            ) : (
+              <>
+                <StyledView className="flex-1 relative min-h-[24px] justify-center">
+                  <StyledText
+                    className={`text-base ${todo.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+                  >
+                    {todo.text}
+                  </StyledText>
+                  
+                  {showActivityBadge && todo.activityEmoji && (
+                    <StyledView className="mt-1 flex-row items-center">
+                      <StyledText className="text-xs text-gray-500 mr-1">
+                        {todo.activityEmoji} {todo.activityName}
+                      </StyledText>
+                    </StyledView>
+                  )}
+                  
+                  {!isEditing && !isEditMode && (
+                    <StyledTouchableOpacity
+                      className="absolute top-0 left-0 right-0 bottom-0"
+                      onLongPress={onDragStart}
+                      onPress={onStartEdit}
+                      delayLongPress={100}
+                      activeOpacity={1}
+                    />
+                  )}
+                </StyledView>
+
+                <StyledView className="flex-row items-center w-[84px] justify-end">
+                  {!isPendingDelete && !isEditMode && (
+                    <>
+                      {todo.isTracking ? (
+                        <StyledTouchableOpacity
+                          className="ml-2 bg-red-500 p-2 rounded-full w-8 h-8 justify-center items-center"
+                          onPress={handleStopTracking}
+                        >
+                          <Ionicons name="stop" size={16} color="#ffffff" />
+                        </StyledTouchableOpacity>
+                      ) : (
+                        <StyledTouchableOpacity
+                          className="ml-2 bg-blue-500 p-2 rounded-full w-8 h-8 justify-center items-center"
+                          onPress={handleStartTracking}
+                          disabled={todo.completed}
+                        >
+                          <Ionicons name="play" size={16} color="#ffffff" />
+                        </StyledTouchableOpacity>
+                      )}
+                    </>
+                  )}
+                </StyledView>
+              </>
+            )}
+          </StyledView>
+        </StyledView>
+      </Swipeable>
+
+      {/* 활동 선택 모달 */}
+      <Modal
+        visible={isActivitySelectorVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsActivitySelectorVisible(false)}
+      >
+        <StyledView className="flex-1 justify-end bg-black bg-opacity-50">
+          <StyledView className="bg-white rounded-t-xl p-4 max-h-[60%]">
+            <StyledView className="flex-row justify-between items-center mb-4">
+              <StyledText className="text-lg font-bold">활동 선택</StyledText>
+              <StyledTouchableOpacity onPress={() => setIsActivitySelectorVisible(false)}>
+                <Ionicons name="close" size={24} color="#9CA3AF" />
               </StyledTouchableOpacity>
             </StyledView>
-          ) : (
-            <>
-              <StyledView className="flex-1 relative min-h-[24px] justify-center">
-                <StyledText
-                  className={`text-base ${todo.completed ? 'text-gray-400 line-through' : 'text-gray-900'}`}
+            
+            <FlatList
+              data={activities}
+              keyExtractor={(item) => item.id.toString()}
+              renderItem={({ item }) => (
+                <StyledTouchableOpacity 
+                  className={`flex-row items-center p-3 mb-2 rounded-lg ${item.id === selectedActivityId ? 'bg-blue-100' : 'bg-white'}`}
+                  onPress={() => handleSelectActivity(item.id)}
                 >
-                  {todo.text}
-                </StyledText>
-                
-                {showActivityBadge && todo.activityEmoji && (
-                  <StyledView className="mt-1 flex-row items-center">
-                    <StyledText className="text-xs text-gray-500 mr-1">
-                      {todo.activityEmoji} {todo.activityName}
-                    </StyledText>
-                  </StyledView>
-                )}
-                
-                {!isEditing && !isEditMode && (
-                  <StyledTouchableOpacity
-                    className="absolute top-0 left-0 right-0 bottom-0"
-                    onLongPress={onDragStart}
-                    onPress={onStartEdit}
-                    delayLongPress={100}
-                    activeOpacity={1}
-                  />
-                )}
-              </StyledView>
-
-              <StyledView className="flex-row items-center w-[84px] justify-end">
-                {!isPendingDelete && !isEditMode && (
-                  <>
-                    {todo.isTracking ? (
-                      <StyledTouchableOpacity
-                        className="ml-2 bg-red-500 p-2 rounded-full w-8 h-8 justify-center items-center"
-                        onPress={handleStopTracking}
-                      >
-                        <Ionicons name="stop" size={16} color="#ffffff" />
-                      </StyledTouchableOpacity>
-                    ) : (
-                      <StyledTouchableOpacity
-                        className="ml-2 bg-blue-500 p-2 rounded-full w-8 h-8 justify-center items-center"
-                        onPress={handleStartTracking}
-                        disabled={todo.completed}
-                      >
-                        <Ionicons name="play" size={16} color="#ffffff" />
-                      </StyledTouchableOpacity>
-                    )}
-                  </>
-                )}
-              </StyledView>
-            </>
-          )}
+                  <StyledText className="text-2xl mr-3">{item.emoji}</StyledText>
+                  <StyledText className="text-base">{item.name}</StyledText>
+                  {item.id === selectedActivityId && (
+                    <StyledView className="ml-auto">
+                      <Ionicons name="checkmark-circle" size={24} color="#3B82F6" />
+                    </StyledView>
+                  )}
+                </StyledTouchableOpacity>
+              )}
+            />
+          </StyledView>
         </StyledView>
-      </StyledView>
-    </Swipeable>
+      </Modal>
+    </>
   );
 };
 

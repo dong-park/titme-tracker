@@ -92,6 +92,31 @@ export const todoSlice = createSlice({
       }
     },
     
+    updateTodoActivity: (state, action: PayloadAction<{ todoId: string; sourceActivityId: number; targetActivityId: number }>) => {
+      const { todoId, sourceActivityId, targetActivityId } = action.payload;
+      
+      // 소스 활동에서 할일 찾기
+      const sourceTodos = state.todosByActivity[sourceActivityId];
+      if (!sourceTodos) return;
+      
+      const todoIndex = sourceTodos.findIndex(todo => todo.id === todoId);
+      if (todoIndex === -1) return;
+      
+      // 할일 객체 복사
+      const todoToMove = { ...sourceTodos[todoIndex] };
+      
+      // 소스 활동에서 할일 제거
+      state.todosByActivity[sourceActivityId] = sourceTodos.filter(todo => todo.id !== todoId);
+      
+      // 타겟 활동이 초기화되지 않은 경우 초기화
+      if (!state.todosByActivity[targetActivityId]) {
+        state.todosByActivity[targetActivityId] = [];
+      }
+      
+      // 타겟 활동에 할일 추가
+      state.todosByActivity[targetActivityId].unshift(todoToMove);
+    },
+    
     startTrackingTodo: (state, action: PayloadAction<{ activityId: number; todoId: string }>) => {
       const { activityId, todoId } = action.payload;
       
@@ -126,6 +151,7 @@ export const {
   initializeActivity,
   reorderTodos,
   updateTodo,
+  updateTodoActivity,
   startTrackingTodo,
   stopTrackingTodo
 } = todoSlice.actions;
