@@ -8,6 +8,9 @@ export interface TodoItem {
   completed: boolean;
   date: string;
   isTracking?: boolean;
+  startDate?: string;  // ISO 형식, 선택적
+  endDate?: string;    // ISO 형식, 선택적
+  categoryId?: number; // 카테고리 ID, 선택적
 }
 
 interface TodoState {
