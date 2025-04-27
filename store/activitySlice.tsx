@@ -134,6 +134,8 @@ const activitySlice = createSlice({
             emoji: string;
             elapsedTime: number;
             color?: string;
+            activityId?: number;
+            todoId?: string;
         }>) => {
             // 메뉴에서 해당 활동의 색상 찾기
             const menuActivity = state.menu.find(

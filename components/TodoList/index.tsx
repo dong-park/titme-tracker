@@ -57,7 +57,7 @@ const selectAllTodos = createSelector(
       const noneTodos = todosByActivity[0].map(todo => ({
         ...todo,
         activityId: 0,
-        activityEmoji: '🔄',
+        activityEmoji: '',
         activityName: '없음',
         activityColor: '#9CA3AF'
       }));

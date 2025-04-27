@@ -73,49 +73,60 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const swipeableRef = useRef<Swipeable>(null);
   
   const handleStartTracking = useCallback(() => {
-    if (!activity) return;
-    
+    // '없음' 카테고리 (activityId가 0 또는 undefined)인지 확인
+    const isNoCategory = activityId === 0 || activityId === undefined;
+
+    // 트래킹 시 사용할 설명과 이모지 결정
+    const descriptionToTrack = isNoCategory ? todo.text : (activity?.name || todo.text); // 없음이면 할일 텍스트, 아니면 활동 이름
+    const emojiToTrack = isNoCategory ? '' : (activity?.emoji || ''); // 없음이면 기본 이모지
+
+    // 유효한 activityId (없음은 0으로 간주)
+    const effectiveActivityId = isNoCategory ? 0 : activityId;
+
     const now = new Date();
-    
-    // 이미 트래킹 중인 할일이 있고, 그것이 현재 할일이 아니라면 먼저 종료
-    if (currentTrackingTodo && 
-        !(currentTrackingTodo.todoId === todo.id && currentTrackingTodo.activityId === activityId)) {
-      // 기존 트래킹 중인 할일 종료
+
+    // 이미 다른 항목 트래킹 중이면 종료
+    if (currentTrackingTodo &&
+        !(currentTrackingTodo.todoId === todo.id && currentTrackingTodo.activityId === effectiveActivityId)) {
       dispatch(stopTrackingTodo({
         activityId: currentTrackingTodo.activityId,
         todoId: currentTrackingTodo.todoId
       }));
       dispatch(stopTracking());
-      
-      // 약간의 지연 후 새 트래킹 시작 (상태 업데이트 충돌 방지)
+
+      // 약간의 지연 후 새 트래킹 시작
       setTimeout(() => {
         dispatch(startTracking({
-          description: activity.name,
-          emoji: activity.emoji,
+          description: descriptionToTrack, // 결정된 설명 전달
+          emoji: emojiToTrack,            // 결정된 이모지 전달
           startTime: now.toLocaleTimeString(),
-          elapsedTime: 0
+          elapsedTime: 0,
+          activityId: effectiveActivityId, // 트래킹 대상 activityId
+          todoId: todo.id                  // 트래킹 대상 todoId
         }));
-        
+        // startTrackingTodo 액션도 호출 (상태 일관성 유지 또는 startTracking에서 통합)
         dispatch(startTrackingTodo({
-          activityId,
+          activityId: effectiveActivityId,
           todoId: todo.id
         }));
       }, 10);
     } else {
-      // 트래킹 중인 할일이 없거나 현재 할일이 이미 트래킹 중인 경우
+      // 새 트래킹 시작
       dispatch(startTracking({
-        description: activity.name,
-        emoji: activity.emoji,
+        description: descriptionToTrack, // 결정된 설명 전달
+        emoji: emojiToTrack,            // 결정된 이모지 전달
         startTime: now.toLocaleTimeString(),
-        elapsedTime: 0
+        elapsedTime: 0,
+        activityId: effectiveActivityId, // 트래킹 대상 activityId
+        todoId: todo.id                  // 트래킹 대상 todoId
       }));
-      
+      // startTrackingTodo 액션도 호출
       dispatch(startTrackingTodo({
-        activityId,
+        activityId: effectiveActivityId,
         todoId: todo.id
       }));
     }
-  }, [dispatch, activity, activityId, todo.id, currentTrackingTodo]);
+  }, [dispatch, activity, activityId, todo.id, todo.text, currentTrackingTodo]);
   
   const handleStopTracking = useCallback(() => {
     dispatch(stopTrackingTodo({
@@ -288,7 +299,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
                 >
                   <StyledText className="text-xs text-gray-700 mr-1">
                     {selectedActivityId === -1 
-                      ? '🔄 없음'
+                      ? '없음'
                       : `${activities.find(a => a.id === selectedActivityId)?.emoji || ''} ${activities.find(a => a.id === selectedActivityId)?.name || '활동 선택'}`
                     }
                   </StyledText>
@@ -369,7 +380,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
             
             <FlatList
               data={[
-                { id: -1, emoji: '🔄', name: '없음', color: '#9CA3AF' },
+                { id: -1, emoji: '', name: '없음', color: '#9CA3AF' },
                 ...activities
               ]}
               keyExtractor={(item) => item.id.toString()}
