@@ -128,20 +128,32 @@ export const todoSlice = createSlice({
       // 할일 객체 복사
       const todoToMove = { ...sourceTodos[todoIndex] };
       
-      // 활동 정보 업데이트
+      if (targetActivityId === -1) {
+        // 활동 없음 상태로 설정
+        delete todoToMove.activityId;
+        delete todoToMove.activityName;
+        delete todoToMove.activityEmoji;
+        delete todoToMove.activityColor;
+        // 소스 활동에서 할일 제거
+        state.todosByActivity[sourceActivityId] = sourceTodos.filter(todo => todo.id !== todoId);
+        // '없음' 할일은 todosByActivity[0]에 추가
+        if (!state.todosByActivity[0]) {
+          state.todosByActivity[0] = [];
+        }
+        state.todosByActivity[0].unshift(todoToMove);
+        return;
+      }
+      // 일반 활동으로 설정
       todoToMove.activityId = targetActivityId;
       if (activityName) todoToMove.activityName = activityName;
       if (activityEmoji) todoToMove.activityEmoji = activityEmoji;
       if (activityColor) todoToMove.activityColor = activityColor;
-      
       // 소스 활동에서 할일 제거
       state.todosByActivity[sourceActivityId] = sourceTodos.filter(todo => todo.id !== todoId);
-      
       // 타겟 활동이 초기화되지 않은 경우 초기화
       if (!state.todosByActivity[targetActivityId]) {
         state.todosByActivity[targetActivityId] = [];
       }
-      
       // 타겟 활동에 할일 추가
       state.todosByActivity[targetActivityId].unshift(todoToMove);
     },

@@ -10,7 +10,7 @@ import {
 } from '@/store/todoSlice';
 import { Ionicons } from '@expo/vector-icons';
 import { createSelector } from '@reduxjs/toolkit';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Alert, TextInput, LayoutAnimation, Platform, UIManager } from 'react-native';
 import DraggableFlatList from 'react-native-draggable-flatlist';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -40,7 +40,6 @@ const selectAllTodos = createSelector(
   [(state: RootState) => state.todos.todosByActivity, (_, activities: MenuActivity[]) => activities],
   (todosByActivity, activities) => {
     let allTodos: TodoItemType[] = [];
-    
     activities.forEach(activity => {
       const activityTodos = todosByActivity[activity.id] || [];
       // 할일에 활동 정보 추가
@@ -53,11 +52,36 @@ const selectAllTodos = createSelector(
       }));
       allTodos = [...allTodos, ...todosWithActivity];
     });
-    
+    // '없음' 카테고리 할일 추가
+    if (todosByActivity[0]) {
+      const noneTodos = todosByActivity[0].map(todo => ({
+        ...todo,
+        activityId: 0,
+        activityEmoji: '🔄',
+        activityName: '없음',
+        activityColor: '#9CA3AF'
+      }));
+      allTodos = [...allTodos, ...noneTodos];
+    }
     // 날짜 기준 정렬 (최신순)
     return allTodos.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }
 );
+
+// window 객체에 __todoListHandlers 프로퍼티 타입 선언 추가
+declare global {
+  interface Window {
+    __todoListHandlers: {
+      handleActivityChange?: (todoId: string, targetActivityId: number) => void;
+      [key: string]: any;
+    };
+  }
+}
+
+// 초기 전역 핸들러 객체 생성
+if (typeof window !== 'undefined') {
+  window.__todoListHandlers = window.__todoListHandlers || {};
+}
 
 export function TodoList({ 
   activityId, 
@@ -106,6 +130,15 @@ export function TodoList({
           clearTimeout(editingTodo._debounceTimer);
         }
         
+        // 로컬 상태에서는 즉시 업데이트 (UI 반응성 개선)
+        const updatedTodos = localTodos.map(todo => 
+          todo.id === editingTodoId 
+            ? { ...todo, text } 
+            : todo
+        );
+        setLocalTodos(updatedTodos);
+        
+        // Redux 상태는 디바운스 처리하여 업데이트
         editingTodo._debounceTimer = setTimeout(() => {
           dispatch(updateTodo({
             activityId: targetActivityId,
@@ -119,7 +152,26 @@ export function TodoList({
   
   // todos가 변경될 때 localTodos 업데이트 (editingTodoId가 null일 때만)
   useEffect(() => {
-    if (editingTodoId === null) {
+    // 편집 중이면 해당 할일만 제외하고 나머지는 업데이트
+    if (editingTodoId) {
+      // 편집 중인 할일을 제외한 새로운 할일 목록
+      const otherTodos = todos.filter(todo => todo.id !== editingTodoId);
+      
+      // 현재 편집 중인 로컬 할일 유지
+      const currentEditingTodo = localTodos.find(todo => todo.id === editingTodoId);
+      
+      if (currentEditingTodo) {
+        // 편집 중인 할일은 로컬 상태 유지, 나머지는 Redux 상태로 업데이트
+        setLocalTodos([
+          ...otherTodos,
+          currentEditingTodo
+        ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      } else {
+        // 편집 중인 할일이 없는 경우 모든 할일 업데이트
+        setLocalTodos(todos);
+      }
+    } else {
+      // 편집 중이 아니면 모든 할일 업데이트
       setLocalTodos(todos);
     }
   }, [todos, editingTodoId]);
@@ -203,6 +255,47 @@ export function TodoList({
       onAddTodo(handleStartAddTodo);
     }
   }, [handleStartAddTodo, onAddTodo]);
+  
+  // 로컬 상태에서 할일 활동 변경 처리 (TodoItem에서 활동 변경 시 호출됨)
+  const handleActivityChange = useCallback((todoId: string, targetActivityId: number) => {
+    // 로컬 상태에서 할일 찾기
+    const todoToUpdate = localTodos.find(todo => todo.id === todoId);
+    if (!todoToUpdate) return;
+    
+    // 새 활동 정보 가져오기
+    const newActivity = activitiesWithTodo.find(a => a.id === targetActivityId);
+    if (!newActivity) return;
+    
+    // 변경된 활동 정보를 반영한 할일로 로컬 상태 업데이트
+    const updatedTodo = {
+      ...todoToUpdate,
+      activityId: targetActivityId,
+      activityName: newActivity.name,
+      activityEmoji: newActivity.emoji,
+      activityColor: newActivity.color
+    };
+    
+    // 로컬 상태 업데이트
+    setLocalTodos(prev => 
+      prev.map(todo => todo.id === todoId ? updatedTodo : todo)
+    );
+  }, [localTodos, activitiesWithTodo]);
+  
+  // TodoItem 컴포넌트에 할일 활동 변경 핸들러 전달을 위한 useEffect
+  useEffect(() => {
+    // 전역 객체로 등록 (TodoItem 컴포넌트에서 접근 가능)
+    window.__todoListHandlers = {
+      ...window.__todoListHandlers,
+      handleActivityChange
+    };
+    
+    return () => {
+      // 컴포넌트 언마운트 시 핸들러 제거
+      if (window.__todoListHandlers) {
+        delete window.__todoListHandlers.handleActivityChange;
+      }
+    };
+  }, [handleActivityChange]);
   
   // 삭제 모드 진입
   const handleEnterDeleteMode = () => {
@@ -292,12 +385,24 @@ export function TodoList({
     // 빈 텍스트여도 할일 유지 (삭제하지 않음)
     const textToSave = editingText.trim() === '' ? ' ' : editingText.trim();
     
-    // Redux 상태 업데이트
+    // 편집 전 디바운스 타이머 취소
+    if (editingTodo._debounceTimer) {
+      clearTimeout(editingTodo._debounceTimer);
+    }
+    
+    // Redux 상태 업데이트 (즉시 반영)
     dispatch(updateTodo({
       activityId: targetActivityId,
       todoId: editingTodoId,
       text: textToSave
     }));
+    
+    // 로컬 상태 업데이트 (Redux 상태가 반영되기 전에 UI 업데이트)
+    setLocalTodos(prev => prev.map(todo => 
+      todo.id === editingTodoId 
+        ? { ...todo, text: textToSave } 
+        : todo
+    ));
 
     // 편집 모드 종료
     setEditingTodoId(null);
@@ -317,12 +422,20 @@ export function TodoList({
       ? editingTodo.activityId || activityId
       : activityId;
     
+    // 편집 전 디바운스 타이머 취소
+    if (editingTodo._debounceTimer) {
+      clearTimeout(editingTodo._debounceTimer);
+    }
+    
     // 새로 추가된 할일이고 텍스트가 비어있는 경우에만 삭제
     if (editingTodo.text === '' && editingText.trim() === '') {
       dispatch(deleteTodo({
         activityId: targetActivityId,
         todoId: editingTodoId
       }));
+      
+      // 로컬 상태에서도 할일 제거
+      setLocalTodos(prev => prev.filter(todo => todo.id !== editingTodoId));
     } else if (editingText.trim() === '') {
       // 기존 할일을 비워서 편집한 경우, 공백 한 칸으로 저장
       dispatch(updateTodo({
@@ -330,6 +443,20 @@ export function TodoList({
         todoId: editingTodoId,
         text: ' '
       }));
+      
+      // 로컬 상태 업데이트
+      setLocalTodos(prev => prev.map(todo => 
+        todo.id === editingTodoId 
+          ? { ...todo, text: ' ' } 
+          : todo
+      ));
+    } else {
+      // 편집 취소 시 원래 텍스트로 복원
+      setLocalTodos(prev => prev.map(todo => 
+        todo.id === editingTodoId 
+          ? { ...todo, text: editingTodo.text } 
+          : todo
+      ));
     }
     
     setEditingTodoId(null);

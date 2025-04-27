@@ -191,19 +191,26 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const handleSelectActivity = (selectedActivityId: number) => {
     setSelectedActivityId(selectedActivityId);
     
-    // 선택된 활동 정보 가져오기
-    const selectedActivity = activities.find(a => a.id === selectedActivityId);
-    
-    // 할일의 활동을 변경하는 액션 디스패치
-    if (todo.id && selectedActivity) {
-      dispatch(updateTodoActivity({
-        todoId: todo.id,
-        sourceActivityId: todo.activityId || activityId,
-        targetActivityId: selectedActivityId,
-        activityName: selectedActivity.name,
-        activityEmoji: selectedActivity.emoji,
-        activityColor: selectedActivity.color
-      }));
+    if (todo.id) {
+      if (selectedActivityId === -1) {
+        dispatch(updateTodoActivity({
+          todoId: todo.id,
+          sourceActivityId: todo.activityId || activityId,
+          targetActivityId: -1
+        }));
+      } else {
+        const selectedActivity = activities.find(a => a.id === selectedActivityId);
+        if (selectedActivity) {
+          dispatch(updateTodoActivity({
+            todoId: todo.id,
+            sourceActivityId: todo.activityId || activityId,
+            targetActivityId: selectedActivityId,
+            activityName: selectedActivity.name,
+            activityEmoji: selectedActivity.emoji,
+            activityColor: selectedActivity.color
+          }));
+        }
+      }
     }
     
     setIsActivitySelectorVisible(false);
@@ -285,8 +292,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
                   onPress={openActivitySelector}
                 >
                   <StyledText className="text-xs text-gray-700 mr-1">
-                    {activities.find(a => a.id === selectedActivityId)?.emoji || ''} 
-                    {activities.find(a => a.id === selectedActivityId)?.name || '활동 선택'}
+                    {selectedActivityId === -1 
+                      ? '🔄 없음'
+                      : `${activities.find(a => a.id === selectedActivityId)?.emoji || ''} ${activities.find(a => a.id === selectedActivityId)?.name || '활동 선택'}`
+                    }
                   </StyledText>
                   <Ionicons name="chevron-down" size={12} color="#4B5563" />
                 </StyledTouchableOpacity>
@@ -364,7 +373,10 @@ const TodoItem: React.FC<TodoItemProps> = ({
             </StyledView>
             
             <FlatList
-              data={activities}
+              data={[
+                { id: -1, emoji: '🔄', name: '없음', color: '#9CA3AF' },
+                ...activities
+              ]}
               keyExtractor={(item) => item.id.toString()}
               renderItem={({ item }) => (
                 <StyledTouchableOpacity 
