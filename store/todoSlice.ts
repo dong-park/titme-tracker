@@ -1,6 +1,8 @@
 import 'react-native-get-random-values';
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 import { v4 as uuidv4 } from 'uuid';
+import { createSelector } from '@reduxjs/toolkit';
+import { RootState } from './store'; // 경로 확인 필요
 
 export interface TodoItem {
   id: string;
@@ -198,3 +200,24 @@ export const {
 } = todoSlice.actions;
 
 export default todoSlice.reducer; 
+
+// 메모이제이션된 셀렉터 추가
+export const selectCurrentTrackingTodo = createSelector(
+  [(state: RootState) => state.todos.todosByActivity],
+  (todosByActivity): { todoId: string; activityId: number } | null => {
+    for (const actId in todosByActivity) {
+      // activityId가 숫자 형태가 아니면 건너뜀 (예: '_persist')
+      if (isNaN(Number(actId))) continue;
+
+      const todos = todosByActivity[Number(actId)];
+      const trackingTodo = todos?.find(t => t.isTracking); // todos가 없을 수 있으므로 ?. 사용
+      if (trackingTodo) {
+        return {
+          todoId: trackingTodo.id,
+          activityId: Number(actId)
+        };
+      }
+    }
+    return null;
+  }
+); 

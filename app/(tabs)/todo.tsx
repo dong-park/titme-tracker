@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Pressable, SafeAreaView, Alert } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { router } from 'expo-router';
@@ -33,8 +33,9 @@ export default function TodoScreen() {
   const activities = useSelector((state: RootState) => state.activity.menu);
 
   // 할일 기능이 활성화된 활동만 필터링
-  const activitiesWithTodo = activities.filter((activity: MenuActivity) =>
-    activity.todoListEnabled
+  const activitiesWithTodo = useMemo(
+    () => activities.filter((activity: MenuActivity) => activity.todoListEnabled),
+    [activities]
   );
 
   // 할일 추가 함수 저장
@@ -52,7 +53,7 @@ export default function TodoScreen() {
 
   // 할일 추가 실행
   const handleAddTodo = useCallback(() => {
-    // 활동 선택 대화상자 표시
+    // 활동이 없으면 안내
     if (activitiesWithTodo.length === 0) {
       Alert.alert(
         '활동 없음',
@@ -66,28 +67,10 @@ export default function TodoScreen() {
       );
       return;
     }
-    
-    // 사용자에게 활동 선택 요청
-    Alert.alert(
-      '활동 선택',
-      '어떤 활동에 할일을 추가할까요?',
-      [
-        {
-          text: '취소',
-          style: 'cancel'
-        },
-        ...activitiesWithTodo.map(activity => ({
-          text: `${activity.emoji} ${activity.name}`,
-          onPress: () => {
-            // 선택한 활동 ID를 직접 TodoList 컴포넌트에 전달
-            if (addTodoRef.current) {
-              // 할일 추가 함수 호출 시 선택한 활동 ID 전달
-              addTodoRef.current(activity.id);
-            }
-          }
-        }))
-      ]
-    );
+    // 카테고리 없는 할일(0) 바로 추가
+    if (addTodoRef.current) {
+      addTodoRef.current(0);
+    }
   }, [activitiesWithTodo, addTodoRef]);
 
   // 삭제 모드 진입 실행

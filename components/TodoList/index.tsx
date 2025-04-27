@@ -112,6 +112,7 @@ export function TodoList({
   const [selectedTodoIds, setSelectedTodoIds] = useState<string[]>([]);
   const [isDeleteMode, setIsDeleteMode] = useState(false);
   const editInputRef = useRef<TextInput>(null);
+  const [selectedActivityId, setSelectedActivityId] = useState<number>(0); // 기본값 0(없음)
   
   // 텍스트 변경 핸들러
   const handleEditTextChange = (text: string) => {
@@ -199,22 +200,46 @@ export function TodoList({
   }, [pendingDeleteIds, editingTodoId]);
   
   // 할일 추가 시작
-  const handleStartAddTodo = (selectedActivityId?: number) => {
+  const handleStartAddTodo = (selectedActivityIdParam?: number) => {
     const newTodoId = uuidv4();
-    
-    // 선택된 activityId 사용 (파라미터로 받은 경우 우선 사용)
-    const targetActivityId = selectedActivityId || activityId;
-    
-    // 선택된 활동 정보 가져오기
-    const targetActivity = selectedActivityId 
-      ? activitiesWithTodo.find(a => a.id === selectedActivityId) 
+
+    // '없음' 카테고리(0)일 때는 별도 처리
+    if (selectedActivityIdParam === 0) {
+      const newTodo: TodoItemType = {
+        id: newTodoId,
+        text: '',
+        completed: false,
+        date: new Date().toISOString(),
+        // activityId, activityName, activityEmoji, activityColor 모두 undefined
+      };
+
+      dispatch(addTodo({
+        activityId: 0,
+        text: '',
+        id: newTodoId
+      }));
+
+      setLocalTodos([newTodo, ...localTodos]);
+      setEditingTodoId(newTodoId);
+      setEditingText('');
+      setSelectedActivityId(0); // '없음'이 선택된 상태로
+      requestAnimationFrame(() => {
+        editInputRef.current?.focus();
+      });
+      return;
+    }
+
+    // 기존 로직 (활동이 있는 경우)
+    const targetActivityId = selectedActivityIdParam || activityId;
+    const targetActivity = selectedActivityIdParam 
+      ? activitiesWithTodo.find(a => a.id === selectedActivityIdParam) 
       : activity;
-    
+
     // 활동 정보가 없는 경우 추가하지 않음
     if (!targetActivity) {
       return;
     }
-    
+
     const newTodo: TodoItemType = {
       id: newTodoId,
       text: '',
@@ -225,7 +250,7 @@ export function TodoList({
       activityEmoji: targetActivity.emoji,
       activityColor: targetActivity.color
     };
-    
+
     // Redux 상태 업데이트
     dispatch(addTodo({
       activityId: targetActivityId,
@@ -235,14 +260,14 @@ export function TodoList({
       activityEmoji: targetActivity.emoji,
       activityColor: targetActivity.color
     }));
-    
+
     // 로컬 상태에 빈 할일 추가 (최상단에)
     setLocalTodos([newTodo, ...localTodos]);
-    
+
     // 편집 모드 활성화
     setEditingTodoId(newTodoId);
     setEditingText('');
-    
+
     // 포커스 설정을 위한 지연
     requestAnimationFrame(() => {
       editInputRef.current?.focus();

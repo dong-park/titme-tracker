@@ -1,10 +1,10 @@
-import React, { RefObject, useCallback, useRef, useState } from 'react';
+import React, { RefObject, useCallback, useRef, useState, useEffect } from 'react';
 import { TextInput, Modal, FlatList } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { TodoItem as TodoItemType } from '@/store/todoSlice';
 import { styled } from 'nativewind';
 import { startTracking, stopTracking } from '@/store/activitySlice';
-import { startTrackingTodo, stopTrackingTodo, updateTodoActivity } from '@/store/todoSlice';
+import { startTrackingTodo, stopTrackingTodo, updateTodoActivity, selectCurrentTrackingTodo } from '@/store/todoSlice';
 import { RootState } from '@/store/store';
 import { useDispatch, useSelector } from 'react-redux';
 import { StyledText, StyledTextInput, StyledTouchableOpacity, StyledView } from './styles';
@@ -68,21 +68,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
   const [isActivitySelectorVisible, setIsActivitySelectorVisible] = useState(false);
   const [selectedActivityId, setSelectedActivityId] = useState(todo.activityId || activityId);
   
-  const currentTrackingTodo = useSelector((state: RootState) => {
-    // 현재 트래킹 중인 할일 찾기
-    const todosByActivity = state.todos.todosByActivity;
-    for (const actId in todosByActivity) {
-      const todos = todosByActivity[actId];
-      const trackingTodo = todos.find(t => t.isTracking);
-      if (trackingTodo) {
-        return { 
-          todoId: trackingTodo.id, 
-          activityId: Number(actId) 
-        };
-      }
-    }
-    return null;
-  });
+  const currentTrackingTodo = useSelector(selectCurrentTrackingTodo);
   
   const swipeableRef = useRef<Swipeable>(null);
   
@@ -223,6 +209,15 @@ const TodoItem: React.FC<TodoItemProps> = ({
     }
   };
 
+  // 활동 선택 모달이 열릴 때 '없음'이 기본 선택되도록
+  useEffect(() => {
+    if (isEditing && isActivitySelectorVisible) {
+      if (selectedActivityId === undefined || selectedActivityId === 0) {
+        setSelectedActivityId(-1);
+      }
+    }
+  }, [isEditing, isActivitySelectorVisible, selectedActivityId]);
+
   return (
     <>
       <Swipeable
@@ -309,7 +304,7 @@ const TodoItem: React.FC<TodoItemProps> = ({
                     {todo.text}
                   </StyledText>
                   
-                  {showActivityBadge && todo.activityEmoji && (
+                  {showActivityBadge && todo.activityEmoji && todo.activityId !== 0 && todo.activityId !== undefined && todo.activityId !== -1 && (
                     <StyledView className="mt-1 flex-row items-center">
                       <StyledText className="text-xs text-gray-500 mr-1">
                         {todo.activityEmoji} {todo.activityName}
